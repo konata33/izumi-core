@@ -1,0 +1,7 @@
+.context/
+node_modules/
+dist/
+apps/api/openapi.json
+packages/sdk/src/openapi.d.ts
+pnpm-lock.yaml
+.conductor/settings.toml

@@ -1,0 +1,34 @@
+{
+  "name": "@izumi/sdk",
+  "version": "0.1.0",
+  "description": "Typed client for the Izumi Core HTTP API",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/openapi.d.ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
+  },
+  "devDependencies": {
+    "openapi-typescript": "7.13.0",
+    "vitest": "4.1.10"
+  }
+}
