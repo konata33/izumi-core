@@ -1,0 +1,35 @@
+{
+  "name": "izumi-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "check:design": "node scripts/check-design.mjs"
+  },
+  "dependencies": {
+    "@izumi/sdk": "file:../../izumi-core/brasilia/packages/sdk",
+    "@tanstack/react-query": "^5.101.4",
+    "lucide-react": "^1.25.0",
+    "motion": "^12.42.2",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-router-dom": "^7.18.1",
+    "simple-icons": "^16.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "typescript": "^5.7.2",
+    "vite": "^7.3.1"
+  }
+}

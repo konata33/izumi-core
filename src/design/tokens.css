@@ -1,0 +1,98 @@
+/*
+ * Izumi Admin's static design contract.
+ * Visual reference: mx-space/mx-admin. Change these values only through a
+ * deliberate design-language update; application styles consume the roles.
+ */
+:root {
+  color-scheme: dark;
+  font-family: "Segoe UI", "Helvetica Neue", sans-serif, -apple-system, system-ui;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  background: var(--mx-canvas);
+  color: var(--mx-text);
+
+  /* Surfaces and hierarchy */
+  --mx-canvas: #0a0a0a;
+  --mx-page: #161616;
+  --mx-raised: #1c1c1c;
+  --mx-input: #141414;
+  --mx-table-surface: #171717;
+  --mx-segmented-surface: #121212;
+  --mx-avatar-surface: #242424;
+  --mx-line: rgba(255, 255, 255, 0.08);
+  --mx-line-soft: rgba(255, 255, 255, 0.06);
+  --mx-hover: rgba(255, 255, 255, 0.04);
+  --mx-selected: rgba(255, 255, 255, 0.08);
+  --mx-quiet-fill: rgba(255, 255, 255, 0.025);
+  --mx-row-hover: rgba(255, 255, 255, 0.025);
+  --mx-empty-fill: rgba(255, 255, 255, 0.015);
+  --mx-active-fill: rgba(255, 255, 255, 0.1);
+  --mx-control-hover-line: rgba(255, 255, 255, 0.14);
+  --mx-control-focus-line: rgba(255, 255, 255, 0.35);
+  --mx-control-focus-ring: rgba(255, 255, 255, 0.06);
+  --mx-settings-action-fill: rgba(255, 255, 255, 0.08);
+  --mx-settings-action-hover: rgba(255, 255, 255, 0.14);
+
+  /* Text and semantic feedback */
+  --mx-text: #fafafa;
+  --mx-text-inverse: #171717;
+  --mx-text-inverse-soft: #181818;
+  --mx-muted: #a3a3a3;
+  --mx-subtle: #737373;
+  --mx-label: #d4d4d4;
+  --mx-placeholder: #626262;
+  --mx-control-primary: #f2f2f2;
+  --mx-control-primary-hover: #fff;
+  --mx-focus: rgba(250, 250, 250, 0.7);
+  --mx-selection: rgba(255, 255, 255, 0.2);
+  --mx-danger: #f87171;
+  --mx-danger-strong: #fca5a5;
+  --mx-danger-line: rgba(248, 113, 113, 0.22);
+  --mx-danger-fill: rgba(248, 113, 113, 0.12);
+  --mx-danger-fill-hover: rgba(248, 113, 113, 0.18);
+  --mx-danger-notice-line: rgba(248, 113, 113, 0.28);
+  --mx-danger-notice-fill: rgba(248, 113, 113, 0.06);
+  --mx-danger-invalid-line: rgba(248, 113, 113, 0.8);
+  --mx-success: #bbf7d0;
+  --mx-success-line: rgba(134, 239, 172, 0.2);
+  --mx-success-fill: rgba(134, 239, 172, 0.055);
+  --mx-success-badge-line: rgba(134, 239, 172, 0.18);
+  --mx-success-badge-fill: rgba(134, 239, 172, 0.06);
+
+  /* Shadows and overlays */
+  --mx-popover-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  --mx-sheet-shadow: 0 -18px 48px rgba(0, 0, 0, 0.35);
+  --mx-overlay: rgba(0, 0, 0, 0.42);
+  --mx-skeleton-gradient: linear-gradient(90deg, #202020 25%, #292929 37%, #202020 63%);
+  --mx-mobile-sheet-handle: #444;
+
+  /* Type roles */
+  --mx-font-size-symbol: 10px;
+  --mx-font-size-meta: 11px;
+  --mx-font-size-label: 12px;
+  --mx-font-size-control: 13px;
+  --mx-font-size-body: 14px;
+  --mx-font-size-page: 18px;
+  --mx-font-size-page-legacy: 20px;
+  --mx-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --mx-font-weight-body: 400;
+  --mx-font-weight-label: 500;
+  --mx-font-weight-heading: 600;
+
+  /* Spatial and motion roles */
+  --mx-sidebar-width: 220px;
+  --mx-workspace-inset: 8px;
+  --mx-workspace-radius: 12px;
+  --mx-control-radius: 6px;
+  --mx-sidebar-header-height: 48px;
+  --mx-content-toolbar-height: 64px;
+  --mx-settings-toolbar-height: 48px;
+  --mx-header-action-size: 40px;
+  --mx-content-gutter: 32px;
+  --mx-settings-content-width: 768px;
+  --mx-editor-aside-width: 252px;
+  --mx-editor-drawer-width: 336px;
+  --mx-font-size-editor-title: 28px;
+  --mx-ease-out: cubic-bezier(0.25, 1, 0.5, 1);
+  --mx-ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+}
