@@ -1,0 +1,14 @@
+"$schema" = "https://conductor.build/schemas/settings.repo.schema.json"
+
+[scripts]
+setup = "pnpm install"
+run_mode = "nonconcurrent"
+
+[scripts.run.dev]
+command = "pnpm dev"
+default = true
+icon = "server"
+
+[scripts.run.test]
+command = "pnpm test"
+icon = "test-tube"

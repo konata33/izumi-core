@@ -1,0 +1,28 @@
+{
+  "name": "izumi-core",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "pnpm --filter @izumi/api build && pnpm --filter @izumi/sdk build",
+    "dev": "pnpm --filter @izumi/api dev",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm --filter @izumi/api typecheck && pnpm --filter @izumi/sdk typecheck",
+    "test": "pnpm --filter @izumi/api test && pnpm --filter @izumi/sdk test",
+    "test:integration": "pnpm --filter @izumi/api test:integration",
+    "openapi": "pnpm --filter @izumi/api openapi:generate",
+    "sdk:generate": "pnpm openapi && pnpm --filter @izumi/sdk generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.7.0",
+    "prettier": "3.9.5",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.64.0"
+  }
+}
