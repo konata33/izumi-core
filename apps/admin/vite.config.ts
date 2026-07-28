@@ -5,6 +5,10 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   base: '/admin/',
+  server: {
+    port: 5173,
+    strictPort: true,
+  },
   plugins: [react()],
   resolve: {
     alias: {

@@ -21,8 +21,8 @@ describe('loadConfig', () => {
     });
   });
 
-  it('uses the Conductor-assigned port when it is present', () => {
-    expect(loadConfig({ ...baseEnvironment, CONDUCTOR_PORT: '4100' }).port).toBe(4100);
+  it('uses PORT even when a platform port is present', () => {
+    expect(loadConfig({ ...baseEnvironment, CONDUCTOR_PORT: '4100' }).port).toBe(3100);
   });
 
   it('splits and trims the explicit browser-origin allowlist', () => {

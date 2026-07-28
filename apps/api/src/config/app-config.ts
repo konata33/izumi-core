@@ -7,7 +7,6 @@ loadWorkspaceEnvironment();
 const environmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
-  CONDUCTOR_PORT: z.coerce.number().int().min(1).max(65_535).optional(),
   DATABASE_URL: z.url(),
   REDIS_URL: z.url(),
   JWT_SECRET: z.string().min(32),
@@ -58,7 +57,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
   const value = parsed.data;
   return {
     nodeEnv: value.NODE_ENV,
-    port: value.CONDUCTOR_PORT ?? value.PORT,
+    port: value.PORT,
     databaseUrl: value.DATABASE_URL,
     redisUrl: value.REDIS_URL,
     jwtSecret: value.JWT_SECRET,

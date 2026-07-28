@@ -26,7 +26,8 @@ pnpm dev
 ```
 
 In a second terminal, start the Admin development server with `pnpm dev:admin`.
-It is available at `http://localhost:5173/admin/`; set its local Core origin in
+It always uses `http://localhost:5173/admin/` and fails if that port is occupied;
+set its local Core origin in
 `apps/admin/.env.local` by copying `apps/admin/.env.example` first. The Admin
 defaults to `http://localhost:3001` when no override is present.
 
@@ -37,8 +38,9 @@ deployment stores the Admin build outside the standard workspace path. The API
 health endpoint is `GET /api/v1/health`; interactive OpenAPI documentation is
 at `/api/docs`.
 
-Conductor supplies `CONDUCTOR_PORT` to the development server, which takes
-precedence over `PORT` when present.
+The Core development server always uses `PORT` from `.env` (default:
+`3001`), even when Conductor supplies `CONDUCTOR_PORT`. This keeps the local
+Core and Admin development origins stable.
 
 Before exposing a new deployment, replace both placeholder secrets in `.env`.
 The first call to `POST /api/v1/auth/setup` must include the deployment-only
