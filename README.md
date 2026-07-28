@@ -9,7 +9,8 @@ links.
 ## Workspace
 
 ```text
-apps/api       NestJS + Fastify API
+apps/api       NestJS + Fastify API, production Admin host
+apps/admin     React + Vite Admin SPA
 packages/sdk   Consumer-safe TypeScript client generated from OpenAPI types
 infra          Local infrastructure guidance
 ```
@@ -24,8 +25,17 @@ pnpm --filter @izumi/api db:migrate
 pnpm dev
 ```
 
-The API health endpoint is `GET /api/v1/health`; interactive OpenAPI
-documentation is at `/api/docs`.
+In a second terminal, start the Admin development server with `pnpm dev:admin`.
+It is available at `http://localhost:5173/admin/`; set its local Core origin in
+`apps/admin/.env.local` by copying `apps/admin/.env.example` first. The Admin
+defaults to `http://localhost:3001` when no override is present.
+
+`pnpm build` builds the SDK, Admin, and API in that order. When the API starts
+with `apps/admin/dist` present, it serves the Admin SPA at `/admin/`, including
+client-side routes such as `/admin/posts`. Set `ADMIN_STATIC_DIR` only when a
+deployment stores the Admin build outside the standard workspace path. The API
+health endpoint is `GET /api/v1/health`; interactive OpenAPI documentation is
+at `/api/docs`.
 
 Conductor supplies `CONDUCTOR_PORT` to the development server, which takes
 precedence over `PORT` when present.
@@ -34,8 +44,9 @@ Before exposing a new deployment, replace both placeholder secrets in `.env`.
 The first call to `POST /api/v1/auth/setup` must include the deployment-only
 `x-izumi-setup-token` header. This prevents an unauthenticated first visitor
 from claiming the owner account. Set `CORS_ORIGIN` to the public Izumi website
-and the separate Izumi Admin origins in production; an unset production value
-denies browser cross-origin requests. Supply multiple origins as a
+and any separately deployed Admin origins in production; the bundled `/admin/`
+application is same-origin and does not need a CORS entry. An unset production
+value denies browser cross-origin requests. Supply multiple origins as a
 comma-separated list.
 
 ## Public Content API v1
@@ -73,9 +84,9 @@ server-only `IZUMI_CORE_URL` API-prefix convention as public posts.
 
 The current slice includes owner setup/login, protected post creation, listing,
 reading, and editing; singleton profile replacement; and public post/profile
-read endpoints. The private API contracts for the separate `izumi-admin`
-repository are documented in [Owner Writing API v1](docs/owner-api-v1.md) and
-[Public Profile API v1](docs/public-profile-api-v1.md). Media processing,
+read endpoints. The private API contracts consumed by `apps/admin` are
+documented in [Owner Writing API v1](docs/owner-api-v1.md) and [Public Profile
+API v1](docs/public-profile-api-v1.md). Media processing,
 comments, real-time events, AI, scheduling, cache invalidation, deletion, and
 a broader site-settings dashboard remain outside this milestone.
 

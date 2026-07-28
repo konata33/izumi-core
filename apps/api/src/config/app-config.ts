@@ -17,6 +17,7 @@ const environmentSchema = z.object({
     .default('7d'),
   OWNER_SETUP_TOKEN: z.string().min(32),
   CORS_ORIGIN: z.string().optional(),
+  ADMIN_STATIC_DIR: z.string().min(1).optional(),
 });
 
 export type AppConfig = Readonly<{
@@ -28,6 +29,7 @@ export type AppConfig = Readonly<{
   jwtExpiresInSeconds: number;
   ownerSetupToken: string;
   corsOrigins: string[];
+  adminStaticDir?: string;
 }>;
 
 export const APP_CONFIG = Symbol('APP_CONFIG');
@@ -62,6 +64,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
     jwtSecret: value.JWT_SECRET,
     jwtExpiresInSeconds: durationToSeconds(value.JWT_EXPIRES_IN),
     ownerSetupToken: value.OWNER_SETUP_TOKEN,
+    adminStaticDir: value.ADMIN_STATIC_DIR,
     corsOrigins:
       value.CORS_ORIGIN?.split(',')
         .map((origin) => origin.trim())

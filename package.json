@@ -4,15 +4,16 @@
   "private": true,
   "packageManager": "pnpm@10.18.3",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "scripts": {
-    "build": "pnpm --filter @izumi/api build && pnpm --filter @izumi/sdk build",
+    "build": "pnpm --filter @izumi/sdk build && pnpm --filter @izumi/admin build && pnpm --filter @izumi/api build",
     "dev": "pnpm --filter @izumi/api dev",
+    "dev:admin": "pnpm --filter @izumi/admin dev",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm --filter @izumi/api typecheck && pnpm --filter @izumi/sdk typecheck",
+    "typecheck": "pnpm --filter @izumi/sdk build && pnpm --filter @izumi/api typecheck && pnpm --filter @izumi/admin typecheck",
     "test": "pnpm --filter @izumi/api test && pnpm --filter @izumi/sdk test",
     "test:integration": "pnpm --filter @izumi/api test:integration",
     "openapi": "pnpm --filter @izumi/api openapi:generate",

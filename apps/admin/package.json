@@ -1,11 +1,11 @@
 {
-  "name": "izumi-admin",
+  "name": "@izumi/admin",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@10.18.3",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "scripts": {
     "dev": "vite",
@@ -15,7 +15,7 @@
     "check:design": "node scripts/check-design.mjs"
   },
   "dependencies": {
-    "@izumi/sdk": "file:../../izumi-core/brasilia/packages/sdk",
+    "@izumi/sdk": "workspace:*",
     "@tanstack/react-query": "^5.101.4",
     "lucide-react": "^1.25.0",
     "motion": "^12.42.2",

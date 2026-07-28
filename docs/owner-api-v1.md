@@ -1,10 +1,10 @@
 # Izumi Owner Writing API v1
 
-Status: implementation contract for the separate `izumi-admin` repository.
+Status: implementation contract for the `apps/admin` application.
 
-`izumi-core` owns authentication, content rules, and persistence. `izumi-admin`
-is a separate browser application; it must use this HTTP API and must never
-connect to PostgreSQL, Redis, or Core's filesystem.
+`izumi-core` owns authentication, content rules, and persistence. `apps/admin`
+is a browser application in the same monorepo; it must use this HTTP API and
+must never connect to PostgreSQL, Redis, or Core's filesystem.
 
 ## URL and browser setup
 
@@ -21,11 +21,13 @@ With the first value above, an owner request is made to
 the public site's `IZUMI_CORE_URL`, which includes `/api` because its requests
 begin with `/v1/public/...`.
 
-The admin build may expose only the Core URL, for example as
-`VITE_IZUMI_CORE_URL`. It must not put `OWNER_SETUP_TOKEN`, the JWT secret, or
+For a separately served development build, the admin may expose only the Core
+URL as `VITE_CORE_API_URL`. The bundled `/admin/` build uses its own origin by
+default. Neither variant may put `OWNER_SETUP_TOKEN`, the JWT secret, or
 database credentials in a build-time environment variable.
 
-Core must explicitly allow the deployed admin origin in `CORS_ORIGIN`:
+Core must explicitly allow an admin origin in `CORS_ORIGIN` only when the Admin
+is deployed on a different origin:
 
 ```text
 CORS_ORIGIN=https://admin.example.com

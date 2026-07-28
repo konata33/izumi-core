@@ -11,12 +11,24 @@ import {
   type UpdatePostInput,
 } from '@izumi/sdk';
 
-export type { AuthToken, OwnerProfile, Post, PostList, PostStatus, ReplaceProfileInput };
+export type {
+  AuthToken,
+  OwnerProfile,
+  Post,
+  PostList,
+  PostStatus,
+  ReplaceProfileInput,
+};
 export type PostInput = CreatePostInput;
 export { IzumiRequestError as CoreRequestError };
 
-const defaultCoreUrl = 'http://localhost:55010';
-const baseUrl = (import.meta.env.VITE_CORE_API_URL || defaultCoreUrl).replace(/\/+$/, '');
+const defaultCoreUrl = import.meta.env.DEV
+  ? 'http://localhost:3001'
+  : window.location.origin;
+const baseUrl = (import.meta.env.VITE_CORE_API_URL || defaultCoreUrl).replace(
+  /\/+$/,
+  '',
+);
 
 function client(accessToken?: string) {
   return createIzumiClient({
@@ -34,7 +46,10 @@ export const core = {
     return client().loginOwner(input);
   },
 
-  listPosts(accessToken: string, options: { page: number; size: number; status?: PostStatus }) {
+  listPosts(
+    accessToken: string,
+    options: { page: number; size: number; status?: PostStatus },
+  ) {
     return client(accessToken).listPosts(options);
   },
 

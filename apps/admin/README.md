@@ -1,6 +1,6 @@
 # Izumi Admin
 
-Izumi 的第一阶段文章管理端。它是一个独立的 React 单页应用（Vite、TypeScript）：Core 是唯一的 API、鉴权和数据约束来源；管理端不保存内容副本，也不实现服务端规则。
+Izumi 的第一阶段文章管理端。它是 Core monorepo 中的 React 单页应用（Vite、TypeScript）：Core 是唯一的 API、鉴权和数据约束来源；管理端不保存内容副本，也不实现服务端规则。
 
 界面以 [mx-admin](https://github.com/mx-space/mx-admin) 为唯一视觉参考：220px 深色侧栏、内嵌工作区、紧凑表格、克制的中性色和细粒度状态反馈。完整的页面模板、组件契约、文案和响应式规则见 [设计语言](docs/design-language.md)。所有页面均采用项目内原生 React/CSS 实现，不依赖第三方 UI 组件库或 CSS 工具链。
 
@@ -23,22 +23,31 @@ Izumi 的第一阶段文章管理端。它是一个独立的 React 单页应用�
 
 ## 运行
 
-需要 Node.js 22+ 与 pnpm 10+。
+需要 Node.js 22.12+ 与 pnpm 10+。以下命令均从 monorepo 根目录执行。
 
 ```bash
 pnpm install
-cp .env.example .env.local
+cp apps/admin/.env.example apps/admin/.env.local
 pnpm dev
+pnpm dev:admin
 ```
 
-`VITE_CORE_API_URL` 是 Core 服务的源地址。当前本地开发使用 `http://localhost:55010`；它只包含公开的服务地址，不能放置 `OWNER_SETUP_TOKEN` 或任何其他密钥。
+`pnpm dev` 启动 Core；`pnpm dev:admin` 启动 Admin，并在
+`http://localhost:5173/admin/` 提供页面。`VITE_CORE_API_URL` 是 Core 服务的源地址，
+本地默认值为 `http://localhost:3001`；它只包含公开的服务地址，不能放置
+`OWNER_SETUP_TOKEN` 或任何其他密钥。
 
-在生产环境中，Core 的 `CORS_ORIGIN` 必须包含管理端的实际来源；否则浏览器会拒绝跨域请求。
+本地开发或独立部署 Admin 时，Core 的 `CORS_ORIGIN` 必须包含管理端的实际来源；
+由 Core 托管的 `/admin/` 与 API 同源，不需要 CORS 配置。
 
 ```bash
-pnpm typecheck
 pnpm build
+pnpm typecheck
 ```
+
+生产构建时，`pnpm build` 会先构建 SDK 和 Admin。随后启动 Core 时，API 会将
+`apps/admin/dist` 作为同源 SPA 托管在 `/admin/`；部署可以用
+`ADMIN_STATIC_DIR` 覆盖该构建目录。
 
 ## 与 Core 的契约
 

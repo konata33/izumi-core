@@ -21,7 +21,7 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <MotionConfig reducedMotion="user">
         <LazyMotion features={domAnimation} strict>
-          <BrowserRouter>
+          <BrowserRouter basename={import.meta.env.BASE_URL}>
             <App />
           </BrowserRouter>
         </LazyMotion>
