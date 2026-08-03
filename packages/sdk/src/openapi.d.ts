@@ -297,25 +297,8 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Initiate a direct media upload */
-        post: operations["MediaController_initiate"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/media/{id}/finalize": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Verify and finalize an uploaded media object */
-        post: operations["MediaController_finalize"];
+        /** Upload one ready media file through Core */
+        post: operations["MediaController_upload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -333,6 +316,41 @@ export interface paths {
         get: operations["MediaController_find"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/storage/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the current owner storage settings */
+        get: operations["StorageController_get"];
+        /** Replace the current owner storage settings */
+        put: operations["StorageController_update"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/storage/settings/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Test the saved storage settings */
+        post: operations["StorageController_test"];
         delete?: never;
         options?: never;
         head?: never;
@@ -847,19 +865,46 @@ export interface components {
             /** Format: date-time */
             finalizedAt?: string | null;
         };
-        InitiateMediaUploadDataDto: {
-            asset: components["schemas"]["MediaAssetDto"];
-            uploadUrl: string;
-            /** @description Append these fields to multipart/form-data before the file field. */
-            uploadFields: Record<string, never>;
-            /** @example 900 */
-            expiresInSeconds: number;
-        };
-        InitiateMediaUploadResponseDto: {
-            data: components["schemas"]["InitiateMediaUploadDataDto"];
-        };
         MediaAssetResponseDto: {
             data: components["schemas"]["MediaAssetDto"];
+        };
+        StorageSettingsDto: {
+            /** @enum {string} */
+            mode: "local" | "s3";
+            localPublicBaseUrl: string;
+            endpoint?: string | null;
+            region?: string | null;
+            bucket?: string | null;
+            accessKeyId?: string | null;
+            secretAccessKeyMasked?: string | null;
+            publicBaseUrl?: string | null;
+            forcePathStyle: boolean;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
+        StorageSettingsResponseDto: {
+            data: components["schemas"]["StorageSettingsDto"];
+        };
+        UpdateStorageSettingsDto: {
+            /** @enum {string} */
+            mode: "local" | "s3";
+            endpoint?: string;
+            region?: string;
+            bucket?: string;
+            accessKeyId?: string;
+            /** @description Required for the first S3 save; omit to preserve the saved secret. */
+            secretAccessKey?: string;
+            publicBaseUrl?: string;
+            forcePathStyle?: boolean;
+        };
+        StorageConnectionTestDto: {
+            ok: boolean;
+            latencyMs: number;
+            /** @enum {string} */
+            mode: "local" | "s3";
+        };
+        StorageConnectionTestResponseDto: {
+            data: components["schemas"]["StorageConnectionTestDto"];
         };
         AiProviderProfileDto: {
             id: string;
@@ -880,8 +925,27 @@ export interface components {
         AiProviderProfilesResponseDto: {
             data: components["schemas"]["AiProviderProfileDto"][];
         };
+        CreateAiProviderProfileDto: {
+            /** @example Claude editorial */
+            name: string;
+            /** @enum {string} */
+            providerType: "claude" | "openai-compatible";
+            /** @example https://api.anthropic.com */
+            baseUrl: string;
+            model: string;
+            apiKey: string;
+        };
         AiProviderProfileResponseDto: {
             data: components["schemas"]["AiProviderProfileDto"];
+        };
+        UpdateAiProviderProfileDto: {
+            name?: string;
+            /** @enum {string} */
+            providerType?: "claude" | "openai-compatible";
+            baseUrl?: string;
+            model?: string;
+            /** @description Omit to preserve the current encrypted key. */
+            apiKey?: string;
         };
         AiConnectionTestDataDto: {
             ok: boolean;
@@ -936,11 +1000,35 @@ export interface components {
         AiSessionsResponseDto: {
             data: components["schemas"]["AiSessionDto"][];
         };
+        CreateAiSessionDto: {
+            /** @example 新对话 */
+            title?: string;
+            /** @description Owner profile UUID or the literal "environment". */
+            providerProfileId?: string;
+        };
         AiSessionResponseDto: {
             data: components["schemas"]["AiSessionDto"];
         };
+        UpdateAiSessionDto: {
+            title: string;
+        };
+        StartAiRunDto: {
+            message: string;
+            providerProfileId?: string;
+        };
+        UpdateToolDecisionDto: {
+            /** @enum {string} */
+            decision: "accepted" | "rejected";
+        };
         AiToolDecisionResponseDto: {
             data: components["schemas"]["AiToolDecisionDto"];
+        };
+        RecordToolCallDto: {
+            /** Format: uuid */
+            runId: string;
+            toolCallId: string;
+            toolName: string;
+            payload: Record<string, never>;
         };
     };
     responses: never;
@@ -973,9 +1061,7 @@ export interface operations {
     AuthController_setup: {
         parameters: {
             query?: never;
-            header: {
-                "x-izumi-setup-token": string;
-            };
+            header?: never;
             path?: never;
             cookie?: never;
         };
@@ -991,14 +1077,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuthTokenResponseDto"];
-                };
-            };
-            403: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ApiErrorResponseDto"];
                 };
             };
             409: {
@@ -1699,35 +1777,24 @@ export interface operations {
             };
         };
     };
-    MediaController_initiate: {
+    MediaController_upload: {
         parameters: {
             query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
-        responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["InitiateMediaUploadResponseDto"];
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: binary */
+                    file: string;
+                    alt?: string;
                 };
             };
         };
-    };
-    MediaController_finalize: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
         responses: {
-            200: {
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1752,6 +1819,67 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MediaAssetResponseDto"];
+                };
+            };
+        };
+    };
+    StorageController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageSettingsResponseDto"];
+                };
+            };
+        };
+    };
+    StorageController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStorageSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageSettingsResponseDto"];
+                };
+            };
+        };
+    };
+    StorageController_test: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageConnectionTestResponseDto"];
                 };
             };
         };
@@ -1782,7 +1910,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAiProviderProfileDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -1818,7 +1950,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAiProviderProfileDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -1875,7 +2011,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAiSessionDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -1930,7 +2070,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAiSessionDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -1949,7 +2093,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartAiRunDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {
@@ -1983,7 +2131,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateToolDecisionDto"];
+            };
+        };
         responses: {
             200: {
                 headers: {
@@ -2002,7 +2154,11 @@ export interface operations {
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordToolCallDto"];
+            };
+        };
         responses: {
             201: {
                 headers: {

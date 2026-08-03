@@ -1,4 +1,4 @@
-import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -43,18 +43,7 @@ export class AuthService {
     @Inject(JwtService) private readonly jwt: JwtService,
   ) {}
 
-  async setupOwner(
-    input: OwnerSetupDto,
-    setupToken: string | undefined,
-  ): Promise<AuthTokenDto> {
-    if (!this.isSetupTokenValid(setupToken)) {
-      throw new ApiException(
-        'SETUP_TOKEN_INVALID',
-        'The owner setup token is invalid',
-        HttpStatus.FORBIDDEN,
-      );
-    }
-
+  async setupOwner(input: OwnerSetupDto): Promise<AuthTokenDto> {
     const username = normalizeUsername(input.username);
 
     try {
@@ -134,13 +123,5 @@ export class AuthService {
       tokenType: 'Bearer',
       expiresIn: this.config.jwtExpiresInSeconds,
     };
-  }
-
-  private isSetupTokenValid(candidate: string | undefined): boolean {
-    if (!candidate) return false;
-
-    const expected = Buffer.from(this.config.ownerSetupToken);
-    const actual = Buffer.from(candidate);
-    return expected.length === actual.length && timingSafeEqual(expected, actual);
   }
 }

@@ -24,8 +24,7 @@ describe.runIf(integrationEnabled)('owner post API', () => {
     process.env.REDIS_URL = 'redis://127.0.0.1:6389';
     process.env.JWT_SECRET = 'test-only-secret-with-at-least-thirty-two-characters';
     process.env.JWT_EXPIRES_IN = '1h';
-    process.env.OWNER_SETUP_TOKEN =
-      'test-setup-token-with-at-least-thirty-two-characters';
+    process.env.CREDENTIALS_ENCRYPTION_KEY = Buffer.alloc(32, 3).toString('base64');
     process.env.CORS_ORIGIN = 'http://localhost:5173';
 
     const { runMigrations } = await import('../../src/database/migrate.js');
@@ -45,12 +44,37 @@ describe.runIf(integrationEnabled)('owner post API', () => {
     expect(beforeSetup.statusCode).toBe(200);
     expect(beforeSetup.json()).toEqual({ data: { initialized: false } });
 
+    const setupRequests = await Promise.all([
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/setup',
+        payload: {
+          username: 'konata',
+          password: 'correct-horse-battery-staple',
+        },
+      }),
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/setup',
+        payload: {
+          username: 'other-owner',
+          password: 'correct-horse-battery-staple',
+        },
+      }),
+    ]);
+    expect(setupRequests.map(({ statusCode }) => statusCode).sort()).toEqual([
+      201, 409,
+    ]);
+    const cleanupPool = new Pool({
+      connectionString: database.getConnectionUri(),
+      max: 1,
+    });
+    await cleanupPool.query('DELETE FROM owners');
+    await cleanupPool.end();
+
     const setup = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/setup',
-      headers: {
-        'x-izumi-setup-token': process.env.OWNER_SETUP_TOKEN,
-      },
       payload: {
         username: 'konata',
         password: 'correct-horse-battery-staple',
@@ -140,9 +164,6 @@ describe.runIf(integrationEnabled)('owner post API', () => {
     const repeatedSetup = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/setup',
-      headers: {
-        'x-izumi-setup-token': process.env.OWNER_SETUP_TOKEN,
-      },
       payload: {
         username: 'another-owner',
         password: 'correct-horse-battery-staple',

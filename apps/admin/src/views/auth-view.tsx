@@ -69,8 +69,9 @@ type SafeZone = {
   top: number;
 };
 
-type AuthField = 'username' | 'password' | 'setup-token';
+type AuthField = 'username' | 'password';
 type AuthNotice = Notice & { field?: AuthField };
+type AuthMode = 'login' | 'setup';
 
 function readCanvasToken(styles: CSSStyleDeclaration, token: string, fallback: number) {
   const value = Number.parseFloat(styles.getPropertyValue(token));
@@ -379,12 +380,28 @@ function FieldFeedback({
   );
 }
 
-export function AuthView() {
+function SetupProgress({ step }: { step: 1 | 2 | 3 }) {
+  return (
+    <ol aria-label="初始化进度" className="mx-setup-progress">
+      {['准备', '账户', '完成'].map((label, index) => {
+        const itemStep = (index + 1) as 1 | 2 | 3;
+        return (
+          <li aria-current={step === itemStep ? 'step' : undefined} key={label}>
+            <span aria-hidden="true">{itemStep}</span>
+            {label}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+export function AuthView({ mode = 'login' }: { mode?: AuthMode }) {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [setupToken, setSetupToken] = useState('');
+  const [setupStep, setSetupStep] = useState<1 | 2 | 3>(1);
   const [authStatus, setAuthStatus] = useState<OwnerAuthStatus>();
   const [statusError, setStatusError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
@@ -406,8 +423,17 @@ export function AuthView() {
       .then(async (nextStatus) => {
         if (!active) return;
 
+        if (mode === 'setup' && nextStatus.initialized) {
+          navigate('/auth', { replace: true });
+          return;
+        }
+        if (mode === 'login' && !nextStatus.initialized) {
+          navigate('/setup', { replace: true });
+          return;
+        }
+
         setAuthStatus(nextStatus);
-        setUsername(nextStatus.username ?? '');
+        setUsername(mode === 'login' ? (nextStatus.username ?? '') : '');
 
         if (!nextStatus.initialized) return;
 
@@ -425,9 +451,9 @@ export function AuthView() {
     return () => {
       active = false;
     };
-  }, [reloadKey]);
+  }, [mode, navigate, reloadKey]);
 
-  function validate(isSetup: boolean): AuthNotice | undefined {
+  function validate(): AuthNotice | undefined {
     if (!username.trim())
       return { kind: 'error', field: 'username', message: '请输入用户名。' };
     if (/\s/u.test(username))
@@ -435,8 +461,6 @@ export function AuthView() {
     if (!password) return { kind: 'error', field: 'password', message: '请输入密码。' };
     if (password.length < 12)
       return { kind: 'error', field: 'password', message: '密码至少 12 个字符。' };
-    if (isSetup && !setupToken.trim())
-      return { kind: 'error', field: 'setup-token', message: '请输入初始化令牌。' };
     return undefined;
   }
 
@@ -444,9 +468,9 @@ export function AuthView() {
     setNotice((current) => (current?.field === field ? undefined : current));
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>, isSetup: boolean) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const validationMessage = validate(isSetup);
+    const validationMessage = validate();
     if (validationMessage) {
       setNotice(validationMessage);
       return;
@@ -456,41 +480,43 @@ export function AuthView() {
     setNotice(undefined);
     try {
       const credentials = { username: username.trim(), password };
-      const token = isSetup
-        ? await core.setupOwner(credentials, setupToken.trim())
-        : await core.login(credentials);
+      const token =
+        mode === 'setup'
+          ? await core.setupOwner(credentials)
+          : await core.login(credentials);
 
       saveSession(token);
-      navigate('/posts', { replace: true });
+      if (mode === 'setup') {
+        setPassword('');
+        setSetupStep(3);
+      } else {
+        navigate('/posts', { replace: true });
+      }
     } catch (error) {
       if (
         error instanceof CoreRequestError &&
         error.code === 'OWNER_ALREADY_CONFIGURED'
       ) {
-        setReloadKey((current) => current + 1);
+        navigate('/auth', { replace: true });
+        return;
       }
       const field =
         error instanceof CoreRequestError && error.code === 'INVALID_CREDENTIALS'
           ? 'password'
-          : error instanceof CoreRequestError && error.code === 'SETUP_TOKEN_INVALID'
-            ? 'setup-token'
-            : undefined;
+          : undefined;
       setNotice({ kind: 'error', field, message: messageForError(error) });
     } finally {
-      // Bootstrap credentials are only ever held for this request.
-      setSetupToken('');
       setBusy(false);
     }
   }
 
   const loading = !authStatus && !statusError;
-  const isSetup = authStatus ? !authStatus.initialized : false;
+  const isSetup = mode === 'setup';
   const avatarUrl = !avatarFailed ? profile?.avatar.url : undefined;
   const busyLabel = isSetup ? '正在创建账户' : '正在登录';
   const actionLabel = isSetup ? '创建账户' : '登录';
   const usernameNotice = notice?.field === 'username' ? notice : undefined;
   const passwordNotice = notice?.field === 'password' ? notice : undefined;
-  const tokenNotice = notice?.field === 'setup-token' ? notice : undefined;
   const formNotice = notice && !notice.field ? notice : undefined;
 
   return (
@@ -538,7 +564,7 @@ export function AuthView() {
           </m.section>
         ) : (
           <m.section
-            key={isSetup ? 'setup' : 'login'}
+            key={isSetup ? `setup-${setupStep}` : 'login'}
             animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
             aria-labelledby="auth-title"
             className={`mx-auth-panel is-${isSetup ? 'setup' : 'login'}`}
@@ -552,7 +578,16 @@ export function AuthView() {
               initial={reduceMotion ? false : 'hidden'}
               variants={revealVariants}
             >
-              <h1 id="auth-title">{isSetup ? '开始使用' : '登录'}</h1>
+              {isSetup ? <SetupProgress step={setupStep} /> : null}
+              <h1 id="auth-title">
+                {isSetup
+                  ? setupStep === 1
+                    ? '欢迎使用 Izumi'
+                    : setupStep === 2
+                      ? '创建管理员'
+                      : '初始化完成'
+                  : '登录'}
+              </h1>
             </m.header>
 
             <m.div
@@ -561,186 +596,194 @@ export function AuthView() {
               initial={reduceMotion ? false : 'hidden'}
               variants={revealVariants}
             >
-              {!isSetup ? (
-                <m.div
-                  animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
-                  aria-hidden="true"
-                  className="mx-auth-avatar"
-                  initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
-                  transition={{ delay: 0.08, duration: 0.2, ease: authEase }}
-                >
-                  {avatarUrl ? (
-                    <img alt="" src={avatarUrl} onError={() => setAvatarFailed(true)} />
-                  ) : (
-                    <UserRoundIcon />
-                  )}
-                </m.div>
-              ) : null}
-
-              <form
-                noValidate
-                className="mx-auth-form"
-                onSubmit={(event) => submit(event, isSetup)}
-              >
-                <AnimatePresence initial={!reduceMotion} mode="wait">
-                  {formNotice ? (
-                    <m.div
-                      key={formNotice.message}
-                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                      className="mx-auth-feedback"
-                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
-                      id="auth-feedback"
-                      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                      transition={stateTransition}
-                    >
-                      <FeedbackAlert notice={formNotice} />
-                    </m.div>
-                  ) : null}
-                </AnimatePresence>
-
-                <div className="mx-auth-field-list">
-                  <m.div
-                    animate="visible"
-                    className={`mx-auth-field${isSetup ? '' : ' is-readonly'}${usernameNotice ? ' is-invalid' : ''}`}
-                    initial={reduceMotion ? false : 'hidden'}
-                    variants={revealVariants}
+              {isSetup && setupStep === 1 ? (
+                <div className="mx-setup-copy">
+                  <p>创建唯一的管理员账户后，就可以开始写作和配置服务。</p>
+                  <m.button
+                    className="mx-auth-submit"
+                    type="button"
+                    whileHover={reduceMotion ? undefined : { y: -1 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+                    onClick={() => setSetupStep(2)}
                   >
-                    <label className="sr-only" htmlFor="owner-username">
-                      用户名
-                    </label>
-                    <div className="mx-auth-input-frame">
-                      <input
-                        id="owner-username"
-                        aria-describedby={
-                          usernameNotice ? 'auth-username-feedback' : undefined
-                        }
-                        aria-invalid={Boolean(usernameNotice) || undefined}
-                        autoCapitalize="none"
-                        autoComplete="username"
-                        maxLength={64}
-                        name="username"
-                        readOnly={!isSetup}
-                        required
-                        spellCheck={false}
-                        type="text"
-                        value={username}
-                        placeholder="用户名"
-                        onChange={(event) => {
-                          if (!isSetup) return;
-                          setUsername(event.target.value);
-                          clearFieldNotice('username');
-                        }}
-                      />
-                    </div>
-                    <FieldFeedback
-                      id="auth-username-feedback"
-                      notice={usernameNotice}
-                      reduceMotion={Boolean(reduceMotion)}
-                    />
-                  </m.div>
-
-                  <m.div
-                    animate="visible"
-                    className={`mx-auth-field${passwordNotice ? ' is-invalid' : ''}`}
-                    initial={reduceMotion ? false : 'hidden'}
-                    variants={revealVariants}
-                  >
-                    <label className="sr-only" htmlFor="owner-password">
-                      密码
-                    </label>
-                    <div className="mx-auth-input-frame">
-                      <input
-                        id="owner-password"
-                        aria-describedby={
-                          passwordNotice ? 'auth-password-feedback' : undefined
-                        }
-                        aria-invalid={Boolean(passwordNotice) || undefined}
-                        autoComplete={isSetup ? 'new-password' : 'current-password'}
-                        minLength={12}
-                        name="password"
-                        placeholder="密码（至少 12 个字符）"
-                        required
-                        type="password"
-                        value={password}
-                        onChange={(event) => {
-                          setPassword(event.target.value);
-                          clearFieldNotice('password');
-                        }}
-                      />
-                    </div>
-                    <FieldFeedback
-                      id="auth-password-feedback"
-                      notice={passwordNotice}
-                      reduceMotion={Boolean(reduceMotion)}
-                    />
-                  </m.div>
-
-                  {isSetup ? (
-                    <m.div
-                      animate="visible"
-                      className={`mx-auth-field${tokenNotice ? ' is-invalid' : ''}`}
-                      initial={reduceMotion ? false : 'hidden'}
-                      variants={revealVariants}
-                    >
-                      <label className="sr-only" htmlFor="owner-setup-token">
-                        初始化令牌
-                      </label>
-                      <div className="mx-auth-input-frame">
-                        <input
-                          id="owner-setup-token"
-                          aria-describedby={
-                            tokenNotice ? 'auth-token-feedback' : undefined
-                          }
-                          aria-invalid={Boolean(tokenNotice) || undefined}
-                          autoComplete="off"
-                          name="setup-token"
-                          placeholder="初始化令牌"
-                          required
-                          spellCheck={false}
-                          type="password"
-                          value={setupToken}
-                          onChange={(event) => {
-                            setSetupToken(event.target.value);
-                            clearFieldNotice('setup-token');
-                          }}
-                        />
-                      </div>
-                      <FieldFeedback
-                        id="auth-token-feedback"
-                        notice={tokenNotice}
-                        reduceMotion={Boolean(reduceMotion)}
-                      />
-                    </m.div>
-                  ) : null}
+                    <span className="mx-auth-submit-content">
+                      <span>开始设置</span>
+                      <ArrowRightIcon />
+                    </span>
+                  </m.button>
                 </div>
-
-                <m.button
-                  aria-label={busy ? busyLabel : actionLabel}
-                  className="mx-auth-submit"
-                  disabled={busy}
-                  type="submit"
-                  whileHover={busy || reduceMotion ? undefined : { y: -1 }}
-                  whileTap={busy || reduceMotion ? undefined : { scale: 0.985 }}
-                >
-                  <AnimatePresence initial={false} mode="wait">
-                    <m.span
-                      className="mx-auth-submit-content"
-                      key={busy ? 'busy' : 'ready'}
-                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
-                      exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
-                      initial={reduceMotion ? false : { opacity: 0, y: 4 }}
-                      transition={{ duration: 0.16, ease: authEase }}
+              ) : isSetup && setupStep === 3 ? (
+                <div className="mx-setup-copy" aria-live="polite">
+                  <p>管理员账户已经创建，初始化入口现已关闭。</p>
+                  <m.button
+                    className="mx-auth-submit"
+                    type="button"
+                    whileHover={reduceMotion ? undefined : { y: -1 }}
+                    whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+                    onClick={() => navigate('/posts', { replace: true })}
+                  >
+                    <span className="mx-auth-submit-content">
+                      <span>进入后台</span>
+                      <ArrowRightIcon />
+                    </span>
+                  </m.button>
+                </div>
+              ) : (
+                <>
+                  {!isSetup ? (
+                    <m.div
+                      animate={reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+                      aria-hidden="true"
+                      className="mx-auth-avatar"
+                      initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
+                      transition={{ delay: 0.08, duration: 0.2, ease: authEase }}
                     >
-                      <span>{busy ? busyLabel : actionLabel}</span>
-                      {busy ? (
-                        <LoaderCircleIcon className="mx-spin" />
+                      {avatarUrl ? (
+                        <img
+                          alt=""
+                          src={avatarUrl}
+                          onError={() => setAvatarFailed(true)}
+                        />
                       ) : (
-                        <ArrowRightIcon />
+                        <UserRoundIcon />
                       )}
-                    </m.span>
-                  </AnimatePresence>
-                </m.button>
-              </form>
+                    </m.div>
+                  ) : null}
+
+                  <form noValidate className="mx-auth-form" onSubmit={submit}>
+                    <AnimatePresence initial={!reduceMotion} mode="wait">
+                      {formNotice ? (
+                        <m.div
+                          key={formNotice.message}
+                          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                          className="mx-auth-feedback"
+                          exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
+                          id="auth-feedback"
+                          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                          transition={stateTransition}
+                        >
+                          <FeedbackAlert notice={formNotice} />
+                        </m.div>
+                      ) : null}
+                    </AnimatePresence>
+
+                    <div className="mx-auth-field-list">
+                      <m.div
+                        animate="visible"
+                        className={`mx-auth-field${isSetup ? '' : ' is-readonly'}${usernameNotice ? ' is-invalid' : ''}`}
+                        initial={reduceMotion ? false : 'hidden'}
+                        variants={revealVariants}
+                      >
+                        <label className="sr-only" htmlFor="owner-username">
+                          用户名
+                        </label>
+                        <div className="mx-auth-input-frame">
+                          <input
+                            id="owner-username"
+                            aria-describedby={
+                              usernameNotice ? 'auth-username-feedback' : undefined
+                            }
+                            aria-invalid={Boolean(usernameNotice) || undefined}
+                            autoCapitalize="none"
+                            autoComplete="username"
+                            maxLength={64}
+                            name="username"
+                            readOnly={!isSetup}
+                            required
+                            spellCheck={false}
+                            type="text"
+                            value={username}
+                            placeholder="用户名"
+                            onChange={(event) => {
+                              if (!isSetup) return;
+                              setUsername(event.target.value);
+                              clearFieldNotice('username');
+                            }}
+                          />
+                        </div>
+                        <FieldFeedback
+                          id="auth-username-feedback"
+                          notice={usernameNotice}
+                          reduceMotion={Boolean(reduceMotion)}
+                        />
+                      </m.div>
+
+                      <m.div
+                        animate="visible"
+                        className={`mx-auth-field${passwordNotice ? ' is-invalid' : ''}`}
+                        initial={reduceMotion ? false : 'hidden'}
+                        variants={revealVariants}
+                      >
+                        <label className="sr-only" htmlFor="owner-password">
+                          密码
+                        </label>
+                        <div className="mx-auth-input-frame">
+                          <input
+                            id="owner-password"
+                            aria-describedby={
+                              passwordNotice ? 'auth-password-feedback' : undefined
+                            }
+                            aria-invalid={Boolean(passwordNotice) || undefined}
+                            autoComplete={isSetup ? 'new-password' : 'current-password'}
+                            minLength={12}
+                            name="password"
+                            placeholder="密码（至少 12 个字符）"
+                            required
+                            type="password"
+                            value={password}
+                            onChange={(event) => {
+                              setPassword(event.target.value);
+                              clearFieldNotice('password');
+                            }}
+                          />
+                        </div>
+                        <FieldFeedback
+                          id="auth-password-feedback"
+                          notice={passwordNotice}
+                          reduceMotion={Boolean(reduceMotion)}
+                        />
+                      </m.div>
+                    </div>
+
+                    <m.button
+                      aria-label={busy ? busyLabel : actionLabel}
+                      className="mx-auth-submit"
+                      disabled={busy}
+                      type="submit"
+                      whileHover={busy || reduceMotion ? undefined : { y: -1 }}
+                      whileTap={busy || reduceMotion ? undefined : { scale: 0.985 }}
+                    >
+                      <AnimatePresence initial={false} mode="wait">
+                        <m.span
+                          className="mx-auth-submit-content"
+                          key={busy ? 'busy' : 'ready'}
+                          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+                          exit={reduceMotion ? { opacity: 1 } : { opacity: 0, y: -4 }}
+                          initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+                          transition={{ duration: 0.16, ease: authEase }}
+                        >
+                          <span>{busy ? busyLabel : actionLabel}</span>
+                          {busy ? (
+                            <LoaderCircleIcon className="mx-spin" />
+                          ) : (
+                            <ArrowRightIcon />
+                          )}
+                        </m.span>
+                      </AnimatePresence>
+                    </m.button>
+                    {isSetup ? (
+                      <button
+                        className="mx-auth-secondary"
+                        disabled={busy}
+                        type="button"
+                        onClick={() => setSetupStep(1)}
+                      >
+                        返回上一步
+                      </button>
+                    ) : null}
+                  </form>
+                </>
+              )}
             </m.div>
           </m.section>
         )}

@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
+import fastifyMultipart from '@fastify/multipart';
 import fastifyStatic from '@fastify/static';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
@@ -49,6 +51,7 @@ async function registerAdminApplication(
     root: adminStaticDirectory,
     prefix: '/admin/',
     wildcard: false,
+    decorateReply: false,
     maxAge: '30d',
     immutable: true,
   });
@@ -61,7 +64,26 @@ async function registerAdminApplication(
     return reply
       .type('text/html')
       .header('cache-control', 'no-cache')
-      .sendFile('index.html', { immutable: false, maxAge: 0 });
+      .sendFile('index.html', adminStaticDirectory, {
+        immutable: false,
+        maxAge: 0,
+      });
+  });
+}
+
+async function registerLocalMedia(
+  app: NestFastifyApplication,
+  config: AppConfig,
+): Promise<void> {
+  await mkdir(config.mediaLocalDirectory, { recursive: true });
+  await app.register(fastifyStatic, {
+    root: config.mediaLocalDirectory,
+    prefix: '/uploads/',
+    maxAge: '365d',
+    immutable: true,
+    setHeaders: (response) => {
+      response.setHeader('X-Content-Type-Options', 'nosniff');
+    },
   });
 }
 
@@ -76,6 +98,18 @@ export async function createApplication(
       bodyLimit: MAX_REQUEST_ENVELOPE_BYTES,
     }),
   );
+
+  await app.register(fastifyMultipart, {
+    throwFileSizeLimit: true,
+    limits: {
+      fields: 1,
+      files: 1,
+      parts: 2,
+      fieldSize: 4_000,
+      fileSize: config.mediaVideoMaxBytes,
+    },
+  });
+  await registerLocalMedia(app, config);
 
   const corsOrigin =
     config.corsOrigins.length === 0

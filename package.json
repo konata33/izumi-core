@@ -13,7 +13,7 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm --filter @izumi/sdk build && pnpm --filter @izumi/api typecheck && pnpm --filter @izumi/admin typecheck",
+    "typecheck": "pnpm --filter @izumi/sdk typecheck && pnpm --filter @izumi/sdk build && pnpm --filter @izumi/api typecheck && pnpm --filter @izumi/admin typecheck",
     "test": "pnpm --filter @izumi/api test && pnpm --filter @izumi/sdk test",
     "test:integration": "pnpm --filter @izumi/api test:integration",
     "openapi": "pnpm --filter @izumi/api openapi:generate",

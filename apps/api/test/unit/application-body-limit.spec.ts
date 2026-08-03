@@ -20,8 +20,11 @@ describe('HTTP request envelope limit', () => {
       redisUrl: 'redis://127.0.0.1:1',
       jwtSecret: 'test-only-secret-with-at-least-thirty-two-characters',
       jwtExpiresInSeconds: 3600,
-      ownerSetupToken: 'test-setup-token-with-at-least-thirty-two-characters',
       corsOrigins: [],
+      corePublicUrl: 'http://localhost:3001',
+      mediaLocalDirectory: '/tmp/izumi-body-limit-media',
+      mediaImageMaxBytes: 1024,
+      mediaVideoMaxBytes: 2048,
     };
     app = await createApplication(config);
     await app.init();

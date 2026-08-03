@@ -58,7 +58,7 @@ export const aiSessions = pgTable(
     title: text('title').notNull(),
     providerProfileId: text('provider_profile_id').references(
       () => aiProviderProfiles.id,
-      { onDelete: 'set null' },
+      { onDelete: 'restrict' },
     ),
     activeRunId: text('active_run_id'),
     activeRunStartedAt: timestamp('active_run_started_at', { withTimezone: true }),

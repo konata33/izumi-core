@@ -74,6 +74,32 @@ export type MediaAsset = {
   finalizedAt?: string;
 };
 
+export type StorageMode = 'local' | 's3';
+
+export type StorageSettings = {
+  mode: StorageMode;
+  localPublicBaseUrl: string;
+  endpoint: string | null;
+  region: string | null;
+  bucket: string | null;
+  accessKeyId: string | null;
+  secretAccessKeyMasked: string | null;
+  publicBaseUrl: string | null;
+  forcePathStyle: boolean;
+  updatedAt: string | null;
+};
+
+export type StorageSettingsInput = {
+  mode: StorageMode;
+  endpoint?: string;
+  region?: string;
+  bucket?: string;
+  accessKeyId?: string;
+  secretAccessKey?: string;
+  publicBaseUrl?: string;
+  forcePathStyle?: boolean;
+};
+
 type ApiMediaAsset = {
   id: string;
   originalName: string;
@@ -333,8 +359,8 @@ export const core = {
     return client().getOwnerAuthStatus();
   },
 
-  setupOwner(input: { username: string; password: string }, setupToken: string) {
-    return client().setupOwner(input, setupToken);
+  setupOwner(input: { username: string; password: string }) {
+    return client().setupOwner(input);
   },
 
   login(input: { username: string; password: string }) {
@@ -485,57 +511,40 @@ export const core = {
     return client(accessToken).replaceProfile(input);
   },
 
-  async initiateMediaUpload(
-    accessToken: string,
-    input: { originalName: string; contentType: string; byteSize: number },
-  ) {
-    const upload = (
-      await ownerRequest<{
-        asset: ApiMediaAsset;
-        uploadUrl: string;
-        uploadFields: Record<string, string>;
-        expiresInSeconds: number;
-      }>(accessToken, '/media/uploads', {
-        method: 'POST',
-        ...jsonBody(input),
-      })
-    ).data;
-    return { ...upload, asset: mapMediaAsset(upload.asset) };
-  },
-
-  async finalizeMediaUpload(accessToken: string, id: string, input: { alt?: string }) {
+  async uploadMedia(accessToken: string, file: File, metadata: { alt?: string } = {}) {
+    const body = new FormData();
+    if (metadata.alt) body.append('alt', metadata.alt);
+    body.append('file', file);
     const asset = (
-      await ownerRequest<ApiMediaAsset>(
-        accessToken,
-        `/media/${encodeURIComponent(id)}/finalize`,
-        { method: 'POST', ...jsonBody(input) },
-      )
+      await ownerRequest<ApiMediaAsset>(accessToken, '/media/uploads', {
+        method: 'POST',
+        body,
+      })
     ).data;
     return mapMediaAsset(asset);
   },
 
-  async uploadMedia(accessToken: string, file: File, metadata: { alt?: string } = {}) {
-    const initiated = await this.initiateMediaUpload(accessToken, {
-      originalName: file.name,
-      contentType: file.type,
-      byteSize: file.size,
-    });
-    const uploadBody = new FormData();
-    for (const [field, value] of Object.entries(initiated.uploadFields)) {
-      uploadBody.append(field, value);
-    }
-    uploadBody.append('file', file);
-    const uploadResponse = await fetch(initiated.uploadUrl, {
-      method: 'POST',
-      body: uploadBody,
-    });
-    if (!uploadResponse.ok) {
-      throw new IzumiRequestError(
-        '媒体上传失败，请检查连接后重试。',
-        uploadResponse.status,
-      );
-    }
-    return this.finalizeMediaUpload(accessToken, initiated.asset.id, metadata);
+  async getStorageSettings(accessToken: string) {
+    return (await ownerRequest<StorageSettings>(accessToken, '/storage/settings')).data;
+  },
+
+  async updateStorageSettings(accessToken: string, input: StorageSettingsInput) {
+    return (
+      await ownerRequest<StorageSettings>(accessToken, '/storage/settings', {
+        method: 'PUT',
+        ...jsonBody(input),
+      })
+    ).data;
+  },
+
+  async testStorageSettings(accessToken: string) {
+    return (
+      await ownerRequest<{ ok: boolean; latencyMs: number; mode: StorageMode }>(
+        accessToken,
+        '/storage/settings/test',
+        { method: 'POST' },
+      )
+    ).data;
   },
 
   async resolveLinkCard(accessToken: string, url: string) {
@@ -611,12 +620,19 @@ export const core = {
     return sessions.map(mapAiSession);
   },
 
-  async createAiSession(accessToken: string, postId: string, title = '新的讨论') {
+  async createAiSession(
+    accessToken: string,
+    postId: string,
+    input: { title?: string; providerProfileId?: string } = {},
+  ) {
     const session = (
       await ownerRequest<ApiAiSession>(
         accessToken,
         `/ai/posts/${encodeURIComponent(postId)}/sessions`,
-        { method: 'POST', ...jsonBody({ title }) },
+        {
+          method: 'POST',
+          ...jsonBody({ ...input, title: input.title ?? '新的讨论' }),
+        },
       )
     ).data;
     return mapAiSession(session);

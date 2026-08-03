@@ -44,10 +44,10 @@ the default run actions stay on the memorable four-digit ports `3001` and
 run before starting another one that uses the same ports. Manual runs can still
 override `PORT` and `ADMIN_PORT` in `.env`.
 
-Before exposing a new deployment, replace both placeholder secrets in `.env`.
-The first call to `POST /api/v1/auth/setup` must include the deployment-only
-`x-izumi-setup-token` header. This prevents an unauthenticated first visitor
-from claiming the owner account. Setup and login use the sole Owner's unique
+Before exposing a new deployment, open the bundled Admin and complete its
+one-time setup flow. Until an Owner exists, the first visitor can create that
+account; initialize Core before making the Admin publicly reachable. Setup and
+login use the sole Owner's unique
 `username` plus a password of at least 12 characters; email is not an
 authentication field. Set `CORS_ORIGIN` to the public Izumi website
 and any separately deployed Admin origins in production; the bundled `/admin/`
@@ -91,8 +91,8 @@ until the owner supplies a complete profile. The public site uses the same
 server-only `IZUMI_CORE_URL` API-prefix convention as public posts.
 
 The current slice includes owner setup/login, structured article editing,
-working-copy revisions and immutable publication snapshots, S3-compatible
-media, safe link previews, persistent AI writing sessions, singleton profile
+working-copy revisions and immutable publication snapshots, local or
+S3-compatible media, safe link previews, persistent AI writing sessions, singleton profile
 replacement, and public post/profile reads. The private contracts consumed by
 `apps/admin` are documented in [Owner Writing API
 v1](docs/owner-api-v1.md) and [Public Profile API
@@ -112,23 +112,28 @@ converts pending rows through Haklex headless conversion:
   writes an empty document over a non-empty source.
 
 Migration `0005` adds media, media-reference, AI-provider, session, message, and
-tool-decision storage.
+tool-decision storage. Migration `0006` adds owner storage settings; `0007`
+prevents deletion of AI providers that are still bound to sessions.
 
 ## Media and AI configuration
 
-The complete S3 group in `.env.example` enables direct upload to MinIO or
-another S3-compatible service. The browser uploads through a short-lived POST
-policy into a private `<S3_BUCKET>-quarantine` bucket; Core verifies size, MIME
-signature, image decoding, dimensions, and ThumbHash before promotion. Only
-finalized assets at their canonical
-`S3_PUBLIC_BASE_URL` may be published. Local MinIO uses ports `9000` (API) and
-`9001` (console).
+Media uses Core-managed local storage by default. Set `MEDIA_LOCAL_DIR` to a
+persistent directory and `CORE_PUBLIC_URL` to Core's canonical public origin.
+An authenticated owner can switch to Cloudflare R2 or another S3-compatible
+service under Admin → Object storage; credentials are encrypted and the
+browser still uploads only to Core. Core streams video uploads, validates size,
+MIME signature and image decoding, calculates image dimensions and ThumbHash,
+then records only ready canonical assets. MinIO is not a runtime dependency.
 
 AI can use a read-only environment provider, encrypted owner BYOK profiles, or
-both. `AI_CREDENTIALS_ENCRYPTION_KEY` must be canonical base64 for exactly 32
-random bytes; replace the development-only example before production. Owner
-keys use AES-256-GCM at rest and are never returned unmasked. Production AI
-provider URLs require HTTPS and public, DNS-pinned destinations.
+both. Core creates persistent JWT and credential-encryption secrets under
+`IZUMI_DATA_DIR` on first start. Production secret managers may override them
+with `JWT_SECRET` and a `CREDENTIALS_ENCRYPTION_KEY` containing canonical base64
+for exactly 32 random bytes. Owner AI keys and S3 secrets use AES-256-GCM at
+rest and are never returned unmasked. Back up the runtime secrets with the
+database; encrypted credentials cannot be recovered without the same key.
+Production AI provider and S3 endpoint URLs require HTTPS and public network
+destinations.
 
 ## Tests
 

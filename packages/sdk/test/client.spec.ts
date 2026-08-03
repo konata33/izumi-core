@@ -1,6 +1,32 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { createIzumiClient, createIzumiPublicClient } from '../src/index.js';
+import type { paths } from '../src/openapi.js';
+
+type StorageSettingsBody =
+  paths['/api/v1/storage/settings']['put']['requestBody']['content']['application/json'];
+type CreateAiSessionBody =
+  paths['/api/v1/ai/posts/{postId}/sessions']['post']['requestBody']['content']['application/json'];
+type StartAiRunBody =
+  paths['/api/v1/ai/sessions/{id}/runs']['post']['requestBody']['content']['application/json'];
+
+describe('generated owner configuration contracts', () => {
+  it('keeps storage secrets and AI provider selection in request bodies', () => {
+    const storage: StorageSettingsBody = {
+      mode: 's3',
+      secretAccessKey: 'write-only-secret',
+    };
+    const session: CreateAiSessionBody = { providerProfileId: 'provider-1' };
+    const run: StartAiRunBody = {
+      message: 'Revise this paragraph',
+      providerProfileId: 'provider-1',
+    };
+
+    expect(storage.secretAccessKey).toBe('write-only-secret');
+    expect(session.providerProfileId).toBe('provider-1');
+    expect(run.providerProfileId).toBe('provider-1');
+  });
+});
 
 describe('createIzumiClient', () => {
   it('reads whether the singleton owner has been initialized', async () => {
@@ -64,10 +90,10 @@ describe('createIzumiClient', () => {
     expect(fetch).toHaveBeenCalledOnce();
   });
 
-  it('sends the bootstrap token only for owner setup', async () => {
+  it('sets up the owner without a deployment secret header', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
       const request = new Request(input, init);
-      expect(request.headers.get('x-izumi-setup-token')).toBe('bootstrap-token');
+      expect(request.headers.has('x-izumi-setup-token')).toBe(false);
       expect(await request.json()).toEqual({
         username: 'owner',
         password: 'correct-horse-battery-staple',
@@ -91,13 +117,10 @@ describe('createIzumiClient', () => {
       fetch,
     });
 
-    await client.setupOwner(
-      {
-        username: 'owner',
-        password: 'correct-horse-battery-staple',
-      },
-      'bootstrap-token',
-    );
+    await client.setupOwner({
+      username: 'owner',
+      password: 'correct-horse-battery-staple',
+    });
   });
 
   it('sends the owner token when saving an existing post', async () => {

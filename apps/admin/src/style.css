@@ -1428,6 +1428,64 @@ a {
   accent-color: var(--mx-control-primary);
 }
 
+.mx-storage-form {
+  margin-top: 24px;
+}
+
+.mx-storage-mode {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+.mx-storage-mode label {
+  display: inline-flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--mx-line);
+  border-radius: var(--mx-control-radius);
+  padding: 0 12px;
+  color: var(--mx-muted);
+  cursor: pointer;
+  font-size: var(--mx-font-size-control);
+}
+
+.mx-storage-mode label:has(input:checked) {
+  border-color: var(--mx-control-focus-line);
+  background: var(--mx-quiet-fill);
+  color: var(--mx-text);
+}
+
+.mx-storage-mode input {
+  accent-color: var(--mx-control-primary);
+}
+
+.mx-storage-mode svg,
+.mx-storage-test svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mx-storage-value {
+  overflow-wrap: anywhere;
+  margin: 0;
+  color: var(--mx-muted);
+  font-size: var(--mx-font-size-control);
+}
+
+.mx-storage-test {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mx-storage-test small {
+  color: var(--mx-subtle);
+}
+
 .mx-ai-profile-actions {
   display: flex;
   justify-content: space-between;
@@ -2201,6 +2259,11 @@ a.mx-post-reference.is-static:focus-visible {
   color: var(--mx-text);
 }
 
+.mx-ai-provider-select {
+  min-width: 0;
+  flex: 0 1 180px;
+}
+
 .mx-ai-messages {
   overflow-y: auto;
   padding: 22px 18px 32px;
@@ -2408,6 +2471,10 @@ a.mx-post-reference.is-static:focus-visible {
   color: var(--mx-subtle);
 }
 
+.mx-ai-empty .mx-button {
+  margin-top: 16px;
+}
+
 /* Authentication threshold */
 .mx-auth {
   position: relative;
@@ -2448,6 +2515,34 @@ a.mx-post-reference.is-static:focus-visible {
   letter-spacing: -0.035em;
 }
 
+.mx-setup-progress {
+  display: grid;
+  margin: 0 0 28px;
+  padding: 0;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  list-style: none;
+}
+
+.mx-setup-progress li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-top: 1px solid var(--mx-auth-line);
+  padding-top: 8px;
+  color: var(--mx-auth-muted);
+  font-size: var(--mx-font-size-auth-help);
+}
+
+.mx-setup-progress li[aria-current='step'] {
+  border-color: var(--mx-auth-line-strong);
+  color: var(--mx-auth-text);
+}
+
+.mx-setup-progress span {
+  font-variant-numeric: tabular-nums;
+}
+
 .mx-auth-content {
   display: grid;
   gap: 24px;
@@ -2479,6 +2574,42 @@ a.mx-post-reference.is-static:focus-visible {
 .mx-auth-form {
   display: grid;
   gap: 24px;
+}
+
+.mx-setup-copy {
+  display: grid;
+  gap: 24px;
+}
+
+.mx-setup-copy p {
+  max-width: 34ch;
+  margin: 0;
+  color: var(--mx-auth-muted);
+  font-size: var(--mx-font-size-auth-control);
+  line-height: 1.65;
+}
+
+.mx-auth-secondary {
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--mx-auth-muted);
+  cursor: pointer;
+  font-size: var(--mx-font-size-auth-action);
+}
+
+.mx-auth-secondary:hover:not(:disabled) {
+  color: var(--mx-auth-text);
+}
+
+.mx-auth-secondary:focus-visible {
+  outline: 2px solid var(--mx-auth-field-focus);
+  outline-offset: 2px;
+}
+
+.mx-auth-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
 }
 
 .mx-auth-field-list {
@@ -2916,6 +3047,16 @@ a.mx-post-reference.is-static:focus-visible {
     grid-template-columns: 1fr;
     gap: 8px;
     align-items: start;
+  }
+
+  .mx-storage-mode,
+  .mx-storage-test {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .mx-storage-mode label {
+    min-height: 44px;
   }
 
   .mx-social-link-content,

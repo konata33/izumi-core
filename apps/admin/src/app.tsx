@@ -15,6 +15,11 @@ const AiSettingsView = lazy(() =>
     default: module.AiSettingsView,
   })),
 );
+const StorageSettingsView = lazy(() =>
+  import('@/views/storage-settings-view').then((module) => ({
+    default: module.StorageSettingsView,
+  })),
+);
 
 function RouteFallback() {
   return (
@@ -25,7 +30,11 @@ function RouteFallback() {
 }
 
 function AuthRoute() {
-  return getSession() ? <Navigate to="/posts" replace /> : <AuthView />;
+  return getSession() ? <Navigate to="/posts" replace /> : <AuthView mode="login" />;
+}
+
+function SetupRoute() {
+  return getSession() ? <Navigate to="/posts" replace /> : <AuthView mode="setup" />;
 }
 
 function ProtectedLayout() {
@@ -41,6 +50,7 @@ export function App() {
   return (
     <Routes>
       <Route path="/auth" element={<AuthRoute />} />
+      <Route path="/setup" element={<SetupRoute />} />
       <Route element={<ProtectedLayout />}>
         <Route path="/posts" element={<PostsView />} />
         <Route
@@ -65,6 +75,14 @@ export function App() {
           element={
             <Suspense fallback={<RouteFallback />}>
               <AiSettingsView />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/settings/storage"
+          element={
+            <Suspense fallback={<RouteFallback />}>
+              <StorageSettingsView />
             </Suspense>
           }
         />

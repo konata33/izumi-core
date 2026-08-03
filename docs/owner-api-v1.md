@@ -33,8 +33,9 @@ instants.
 
 - `GET /api/v1/auth/status` is public and reports whether the singleton owner
   exists. Once initialized it also returns the normalized username.
-- `POST /api/v1/auth/setup` requires `x-izumi-setup-token` and accepts
-  `{ username, password }` exactly once.
+- `POST /api/v1/auth/setup` accepts `{ username, password }` exactly once while
+  no Owner exists. The database singleton constraint arbitrates concurrent
+  setup attempts.
 - `POST /api/v1/auth/login` accepts `{ username, password }`.
 - All other owner endpoints require `Authorization: Bearer <token>`.
 
@@ -75,7 +76,7 @@ non-empty title, slug, derived content, excerpt, and section. Slugs match
 Core rejects `poll`, executable `dynamic`, and unknown serialized node types.
 Internal post references must target another post with a live publication.
 Image/gallery nodes require alternative text. Image, gallery, video, and video
-poster URLs must resolve to finalized media owned by the current owner.
+poster URLs must resolve to ready media owned by the current owner.
 
 ## Working copy and ETag
 
@@ -131,22 +132,23 @@ clients, but new Admin code uses the explicit commands.
 
 ## Media
 
-The complete S3 configuration enables these endpoints:
+- `POST /api/v1/media/uploads` accepts one multipart `file` and optional `alt`.
+- `GET /api/v1/media/:id` returns the owner-scoped ready asset.
+- `GET|PUT /api/v1/storage/settings` reads or replaces the current mode.
+- `POST /api/v1/storage/settings/test` writes and removes a probe using the
+  saved configuration.
 
-1. `POST /api/v1/media/uploads` with
-   `{ originalName, contentType, byteSize }`.
-2. Browser `POST` multipart form data to `uploadUrl`, appending every returned
-   `uploadFields` entry before the file field.
-3. `POST /api/v1/media/:id/finalize` with optional `{ alt }`.
-4. `GET /api/v1/media/:id`.
+Local storage is the default. S3 or Cloudflare R2 is optional and configured by
+the authenticated owner; secret credentials are encrypted and only a masked
+value is returned. The browser never receives S3 credentials or an object-store
+upload URL.
 
-The upload policy enforces the declared MIME and exact byte size in a private
-quarantine bucket. Finalize performs HEAD verification, magic-byte sniffing,
-promotion into the public bucket, bounded image decode,
-trusted width/height calculation, and ThumbHash generation. SVG is rejected.
-Default limits are 20 MiB for images and 500 MiB for MP4/WebM. Clients must use
-the returned `publicUrl`; they cannot publish an initiated object or forge
-dimensions, MIME, ThumbHash, or a different URL.
+Core applies streamed byte limits, MIME policy and magic-byte sniffing before
+storing the object. Images additionally receive a bounded decode, trusted
+width/height calculation, and ThumbHash generation. SVG is rejected. Default
+limits are 20 MiB for images and 500 MiB for MP4/WebM. Clients must use the
+returned `publicUrl`; they cannot forge dimensions, MIME, ThumbHash, or a
+different URL.
 
 ## Link cards
 
@@ -193,18 +195,18 @@ records `rejected` without changing the editor.
 
 ## Errors Admin handles explicitly
 
-| Situation                     | Status / code                     | Admin behavior                                |
-| ----------------------------- | --------------------------------- | --------------------------------------------- |
-| Invalid request               | `400 VALIDATION_ERROR`            | Show field feedback.                          |
-| Missing publish fields        | `400 POST_PUBLISHING_INCOMPLETE`  | Open settings and highlight fields.           |
-| Unsupported rich node         | `400 POST_DOCUMENT_UNPUBLISHABLE` | Keep the working copy and identify the block. |
-| Missing image alt             | `400 MEDIA_ALT_REQUIRED`          | Ask for alternative text.                     |
-| Media not finalized/canonical | `400 MEDIA_NOT_PUBLISHABLE`       | Keep the draft and retry finalize.            |
-| Missing/stale ETag            | `428` / `412`                     | Preserve local edits; reload or fork.         |
-| Slug conflict                 | `409 POST_SLUG_CONFLICT`          | Ask for another slug.                         |
-| AI run already active         | `409 AI_RUN_ALREADY_ACTIVE`       | Offer cancel/wait.                            |
-| Unauthorized                  | `401`                             | Clear the local session.                      |
-| Feature not configured        | `503` feature-specific code       | Explain required server configuration.        |
+| Situation                 | Status / code                     | Admin behavior                                |
+| ------------------------- | --------------------------------- | --------------------------------------------- |
+| Invalid request           | `400 VALIDATION_ERROR`            | Show field feedback.                          |
+| Missing publish fields    | `400 POST_PUBLISHING_INCOMPLETE`  | Open settings and highlight fields.           |
+| Unsupported rich node     | `400 POST_DOCUMENT_UNPUBLISHABLE` | Keep the working copy and identify the block. |
+| Missing image alt         | `400 MEDIA_ALT_REQUIRED`          | Ask for alternative text.                     |
+| Media not ready/canonical | `400 MEDIA_NOT_PUBLISHABLE`       | Keep the draft and retry the upload.          |
+| Missing/stale ETag        | `428` / `412`                     | Preserve local edits; reload or fork.         |
+| Slug conflict             | `409 POST_SLUG_CONFLICT`          | Ask for another slug.                         |
+| AI run already active     | `409 AI_RUN_ALREADY_ACTIVE`       | Offer cancel/wait.                            |
+| Unauthorized              | `401`                             | Clear the local session.                      |
+| Feature not configured    | `503` feature-specific code       | Explain required server configuration.        |
 
 ## OpenAPI and SDK
 

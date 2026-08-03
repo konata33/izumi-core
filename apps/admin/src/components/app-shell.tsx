@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   FileTextIcon,
+  HardDriveIcon,
   LogOutIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
@@ -68,6 +69,7 @@ function Navigation({
   const onPosts = location.pathname.startsWith('/posts');
   const onProfile = location.pathname === '/profile';
   const onAiSettings = location.pathname === '/settings/ai';
+  const onStorageSettings = location.pathname === '/settings/storage';
 
   function activeSurface(active: boolean) {
     if (!active) return null;
@@ -154,6 +156,16 @@ function Navigation({
             {activeSurface(onAiSettings)}
             <SparklesIcon />
             <span className="mx-navigation-label">AI 模型</span>
+          </Link>
+          <Link
+            aria-current={onStorageSettings ? 'page' : undefined}
+            className={`mx-navigation-item${onStorageSettings ? ' is-active' : ''}`}
+            to="/settings/storage"
+            onClick={onNavigate}
+          >
+            {activeSurface(onStorageSettings)}
+            <HardDriveIcon />
+            <span className="mx-navigation-label">对象存储</span>
           </Link>
         </div>
       </nav>
@@ -291,7 +303,7 @@ export function AppShell({ children, contentKey }: AppShellProps) {
         </header>
         <main
           id="main-content"
-          className={`mx-workspace-main${location.pathname === '/profile' || location.pathname === '/settings/ai' ? ' is-settings-view' : ' is-content-view'}`}
+          className={`mx-workspace-main${location.pathname === '/profile' || location.pathname.startsWith('/settings/') ? ' is-settings-view' : ' is-content-view'}`}
         >
           <AnimatePresence initial={false} mode="wait">
             <m.div

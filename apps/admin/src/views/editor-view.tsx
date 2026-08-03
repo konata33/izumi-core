@@ -15,7 +15,13 @@ import {
   XIcon,
 } from 'lucide-react';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom';
+import {
+  Link,
+  useBlocker,
+  useLocation,
+  useNavigate,
+  useParams,
+} from 'react-router-dom';
 
 import { AutosizeTitleField } from '@/components/autosize-title-field';
 import { FeedbackAlert, type Notice } from '@/components/feedback-alert';
@@ -1186,6 +1192,7 @@ function AiWritingPanel({
   const session = getSession();
   const queryClient = useQueryClient();
   const [selectedId, setSelectedId] = useState<string>();
+  const [selectedProviderId, setSelectedProviderId] = useState('');
   const [message, setMessage] = useState('');
   const [stream, setStream] = useState('');
   const [running, setRunning] = useState(false);
@@ -1201,6 +1208,12 @@ function AiWritingPanel({
     queryFn: () => core.listAiSessions(session!.accessToken, postId!),
     enabled: Boolean(session && postId),
   });
+  const providersQuery = useQuery({
+    queryKey: ['ai-providers'],
+    queryFn: () => core.listAiProviders(session!.accessToken),
+    enabled: Boolean(session),
+    retry: false,
+  });
   const sessionQuery = useQuery({
     queryKey: ['ai-session', selectedId],
     queryFn: () => core.getAiSession(session!.accessToken, selectedId!),
@@ -1210,6 +1223,23 @@ function AiWritingPanel({
   useEffect(() => {
     if (!selectedId && sessionsQuery.data?.[0]) setSelectedId(sessionsQuery.data[0].id);
   }, [selectedId, sessionsQuery.data]);
+
+  useEffect(() => {
+    const providers = providersQuery.data;
+    if (!providers) return;
+    if (selectedId && sessionQuery.data?.id !== selectedId) return;
+    const sessionProviderId = sessionQuery.data?.providerProfileId;
+    const fallbackId =
+      providers.find((provider) => provider.isEnvironment)?.id ??
+      providers[0]?.id ??
+      '';
+    setSelectedProviderId(
+      sessionProviderId &&
+        providers.some((provider) => provider.id === sessionProviderId)
+        ? sessionProviderId
+        : fallbackId,
+    );
+  }, [selectedId, providersQuery.data, sessionQuery.data]);
 
   useEffect(() => {
     const pending = sessionQuery.data?.toolDecisions
@@ -1224,9 +1254,11 @@ function AiWritingPanel({
   }, [selectedId, sessionQuery.data]);
 
   async function newSession() {
-    if (!postId || !session) return;
+    if (!postId || !session || !selectedProviderId) return;
     try {
-      const created = await core.createAiSession(session.accessToken, postId);
+      const created = await core.createAiSession(session.accessToken, postId, {
+        providerProfileId: selectedProviderId,
+      });
       setSelectedId(created.id);
       await queryClient.invalidateQueries({ queryKey: ['ai-sessions', postId] });
     } catch (cause) {
@@ -1236,17 +1268,23 @@ function AiWritingPanel({
 
   async function send() {
     const prompt = message.trim();
-    if (!prompt || !session || !postId) return;
+    if (
+      !prompt ||
+      !session ||
+      !postId ||
+      !selectedProviderId ||
+      (selectedId && sessionQuery.data?.id !== selectedId)
+    )
+      return;
     const sourceDocument = currentDocument;
     const sourceText = currentText;
     let targetId = selectedId;
     try {
       if (!targetId) {
-        const created = await core.createAiSession(
-          session.accessToken,
-          postId,
-          prompt.slice(0, 28),
-        );
+        const created = await core.createAiSession(session.accessToken, postId, {
+          title: prompt.slice(0, 28),
+          providerProfileId: selectedProviderId,
+        });
         targetId = created.id;
         setSelectedId(created.id);
       }
@@ -1269,6 +1307,7 @@ function AiWritingPanel({
             `用户要求：${prompt}`,
             `当前正文：\n${sourceText}`,
           ].join('\n\n'),
+          providerProfileId: selectedProviderId,
         },
         controller.signal,
       )) {
@@ -1351,7 +1390,35 @@ function AiWritingPanel({
     );
   }
 
+  if (providersQuery.isPending) {
+    return (
+      <div className="mx-ai-empty" aria-busy="true">
+        <LoaderCircleIcon className="mx-spin" />
+        <h3>正在读取模型连接</h3>
+      </div>
+    );
+  }
+
+  if (providersQuery.error || !providersQuery.data?.length) {
+    return (
+      <div className="mx-ai-empty">
+        <SparklesIcon />
+        <h3>先连接 AI 模型</h3>
+        <p>
+          {providersQuery.error
+            ? messageForError(providersQuery.error)
+            : '添加一个模型连接后，才能在文章中使用 AI 写作助手。'}
+        </p>
+        <Link className="mx-button" to="/settings/ai">
+          配置 AI 模型
+        </Link>
+      </div>
+    );
+  }
+
   const messages: AiMessage[] = sessionQuery.data?.messages ?? [];
+  const providers = providersQuery.data;
+  const sessionReady = !selectedId || sessionQuery.data?.id === selectedId;
   const proposalInspection = proposal
     ? inspectTextScopedProposal(proposal.payload.before, proposal.payload.after)
     : undefined;
@@ -1372,6 +1439,22 @@ function AiWritingPanel({
             </button>
           ))}
         </div>
+        <label className="mx-ai-provider-select">
+          <span className="sr-only">AI 模型连接</span>
+          <select
+            aria-label="AI 模型连接"
+            className="mx-control"
+            disabled={running || !sessionReady}
+            value={selectedProviderId}
+            onChange={(event) => setSelectedProviderId(event.target.value)}
+          >
+            {providers.map((provider) => (
+              <option key={provider.id} value={provider.id}>
+                {provider.name} · {provider.model}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           aria-label="新建 AI 会话"
           className="mx-editor-drawer-close"
@@ -1504,7 +1587,7 @@ function AiWritingPanel({
             <button
               aria-label="发送给 AI"
               className="mx-ai-send"
-              disabled={!message.trim()}
+              disabled={!message.trim() || !selectedProviderId || !sessionReady}
               type="submit"
             >
               <SendIcon />
