@@ -10,7 +10,7 @@ export class ErrorEnvelopeDto {
   @ApiProperty({
     type: Object,
     additionalProperties: true,
-    example: { issues: ['email must be an email'] },
+    example: { issues: ['username must not contain whitespace'] },
     required: false,
   })
   details?: unknown;

@@ -8,7 +8,12 @@ export type Notice = {
 };
 
 export function FeedbackAlert({ notice }: { notice: Notice }) {
-  const Icon = notice.kind === 'error' ? CircleAlertIcon : notice.kind === 'success' ? CircleCheckBigIcon : InfoIcon;
+  const Icon =
+    notice.kind === 'error'
+      ? CircleAlertIcon
+      : notice.kind === 'success'
+        ? CircleCheckBigIcon
+        : InfoIcon;
   const reduceMotion = useReducedMotion();
 
   return (
@@ -17,6 +22,7 @@ export function FeedbackAlert({ notice }: { notice: Notice }) {
       animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
       className={`mx-notice is-${notice.kind}`}
       initial={reduceMotion ? false : { opacity: 0, y: -4 }}
+      aria-live={notice.kind === 'error' ? 'assertive' : 'polite'}
       role={notice.kind === 'error' ? 'alert' : 'status'}
       transition={{ duration: 0.18, ease: [0.25, 1, 0.5, 1] }}
     >

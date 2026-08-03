@@ -8,6 +8,7 @@ async function generate(): Promise<void> {
   const app = await createApplication({
     nodeEnv: 'test',
     port: 0,
+    adminPort: 0,
     databaseUrl: 'postgres://izumi:izumi@127.0.0.1:54329/izumi_core',
     redisUrl: 'redis://127.0.0.1:6389',
     jwtSecret: 'openapi-generation-secret-that-is-not-used-at-runtime',

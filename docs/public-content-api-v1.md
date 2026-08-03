@@ -29,8 +29,8 @@ Components, metadata generation, RSS, and sitemap generation.
 
 ### `GET /v1/public/posts`
 
-Returns published post summaries ordered newest first. It deliberately does
-not return article Markdown.
+Returns live publication summaries ordered newest first. It deliberately does
+not return the article document or compatibility Markdown.
 
 `limit` is optional. When omitted, Core returns all published posts: the
 archive, RSS, sitemap, and static article parameters rely on this behavior. If
@@ -60,8 +60,10 @@ this public response.
 
 ### `GET /v1/public/posts/:slug`
 
-Returns a published post with its canonical Markdown source in a `data`
-envelope. It returns `404` when the slug does not identify a published post.
+Returns the current immutable publication snapshot in a `data` envelope. The
+canonical `document` is a Lexical/Haklex serialized editor state; `content` is
+server-derived compatibility Markdown for existing readers. It returns `404`
+when the slug does not identify a live publication.
 
 ```json
 {
@@ -73,7 +75,32 @@ envelope. It returns `404` when the slug does not identify a published post.
     "readingMinutes": 4,
     "section": "思考",
     "tags": ["网站", "写作"],
-    "content": "## 先让内容找到位置\n\n正文以 Markdown 保存。"
+    "document": {
+      "root": {
+        "children": [
+          {
+            "children": [
+              {
+                "detail": 0,
+                "format": 0,
+                "mode": "normal",
+                "style": "",
+                "text": "先让内容找到位置",
+                "type": "text",
+                "version": 1
+              }
+            ],
+            "tag": "h2",
+            "type": "heading",
+            "version": 1
+          }
+        ],
+        "type": "root",
+        "version": 1
+      }
+    },
+    "content": "## 先让内容找到位置",
+    "references": []
   }
 }
 ```
@@ -81,9 +108,9 @@ envelope. It returns `404` when the slug does not identify a published post.
 ## Contract rules
 
 - All routes return `application/json` and the `data` envelope shown above.
-- `title`, `slug`, `content`, and `section` are non-empty trimmed strings when
-  a post is published. `content` remains raw Markdown; Core does not render or
-  sanitize it.
+- `title`, `slug`, derived `content`, and `section` are non-empty trimmed
+  strings when a post is published. `document` is canonical JSON. `content`
+  remains compatibility Markdown; Core does not render it to HTML.
 - `excerpt` is editorial copy written by the owner. It may be empty on a draft,
   but is a required non-empty trimmed string when a post is published.
 - `tags` is always present and may be `[]`. Each tag is trimmed and non-empty;
@@ -92,18 +119,19 @@ envelope. It returns `404` when the slug does not identify a published post.
 - `publishedAt` is a normalized ISO 8601 UTC timestamp in
   `YYYY-MM-DDTHH:mm:ss.SSSZ` form. The public site formats it in
   Asia/Shanghai time; the database must not store a display-only calendar date.
-- v1 does not support scheduled publishing. On the first `draft → published`
-  transition, Core writes `publishedAt` in UTC; later edits or re-publication
-  retain that first publication time.
-- `readingMinutes` is calculated by Core every time `content` changes. Convert
-  Markdown to visible plain text, then return
+- v1 does not support scheduled publishing. On the first publication Core
+  writes `publishedAt` in UTC; later working-copy edits remain private until a
+  new snapshot is published and retain that first publication time.
+- `readingMinutes` is calculated by Core from the derived visible content:
   `max(1, ceil(CJK characters / 300 + Latin-or-number word tokens / 200))`.
   The same integer must appear in collection and detail responses.
-- `content` is required only on the detail endpoint. It is the canonical
-  owner-authored Markdown source; the collection endpoint must omit it.
-- The public renderer supports CommonMark + GFM. Raw HTML may be included for
-  document structure, but it is sanitized before rendering: scripts, event
-  handlers, and unsafe URLs never become executable content or clickable links.
+- `document`, `content`, and `references` are detail-only. The collection
+  endpoint omits them. `references` resolves live internal post references to
+  their public slug/title metadata.
+- A Markdown compatibility renderer supports CommonMark + GFM and sanitizes
+  raw HTML, event handlers, and unsafe URLs. A structured renderer must compose
+  only the allowlisted Haklex nodes; `poll`, executable `dynamic`, transient AI
+  diff, and unknown nodes are never public.
 - Unpublished, private, or draft content never appears in this API. A missing
   slug and a non-public slug both return `404`.
 - Unknown additive fields are allowed. A later revision may add a stable post

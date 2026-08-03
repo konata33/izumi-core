@@ -1,6 +1,11 @@
 import { CoreRequestError } from './core';
 
-function detailsOf(details: unknown): { fields?: string[]; issues?: string[]; field?: string; kind?: string } {
+function detailsOf(details: unknown): {
+  fields?: string[];
+  issues?: string[];
+  field?: string;
+  kind?: string;
+} {
   if (!details || typeof details !== 'object') return {};
   const value = details as Record<string, unknown>;
   return {
@@ -22,14 +27,16 @@ export function messageForError(error: unknown): string {
 
   switch (error.code) {
     case 'INVALID_CREDENTIALS':
-      return '邮箱或密码不正确，请检查后重试。';
+      return '用户名或密码不正确。';
     case 'OWNER_ALREADY_CONFIGURED':
-      return '管理员已经初始化，请使用登录入口继续。';
+      return '管理员已设置，请登录。';
     case 'SETUP_TOKEN_INVALID':
-      return '初始化令牌无效。请从 Core 部署环境重新复制令牌。';
+      return '初始化令牌无效。请重新复制后再试。';
     case 'POST_PUBLISHING_INCOMPLETE': {
       const fields = details.fields?.map(fieldName).join('、');
-      return fields ? `发布前请补全：${fields}。` : '发布前请补全标题、slug、正文、摘要和栏目。';
+      return fields
+        ? `发布前请补全：${fields}。`
+        : '发布前请补全标题、slug、正文、摘要和栏目。';
     }
     case 'POST_SLUG_CONFLICT':
       return '这个 slug 已被另一篇文章使用，请换一个。';
@@ -38,9 +45,13 @@ export function messageForError(error: unknown): string {
     case 'PROFILE_NOT_CONFIGURED':
       return '尚未配置个人资料。填写完整资料后即可保存。';
     case 'PROFILE_FIELD_INVALID':
-      return details.field ? `${profileFieldName(details.field)}的格式不符合 Core 的要求。` : '个人资料字段不符合 Core 的格式要求。';
+      return details.field
+        ? `${profileFieldName(details.field)}的格式不符合 Core 的要求。`
+        : '个人资料字段不符合 Core 的格式要求。';
     case 'PROFILE_LINK_KIND_DUPLICATE':
-      return details.kind ? `${profileLinkKindName(details.kind)} 只能填写一次。` : '同一种个人链接只能填写一次。';
+      return details.kind
+        ? `${profileLinkKindName(details.kind)} 只能填写一次。`
+        : '同一种个人链接只能填写一次。';
     case 'VALIDATION_ERROR':
       return details.issues?.join('；') || '提交内容不符合 Core 的格式要求。';
     default:

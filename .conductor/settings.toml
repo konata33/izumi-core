@@ -5,12 +5,12 @@ setup = "pnpm install"
 run_mode = "nonconcurrent"
 
 [scripts.run.dev]
-command = "pnpm dev"
+command = "env -u CONDUCTOR_PORT pnpm dev"
 default = true
 icon = "server"
 
 [scripts.run.admin]
-command = "pnpm dev:admin"
+command = "env -u CONDUCTOR_PORT pnpm dev:admin"
 icon = "monitor"
 
 [scripts.run.test]

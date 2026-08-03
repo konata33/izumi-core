@@ -13,7 +13,11 @@ export function getSession(): Session | undefined {
     if (!raw) return undefined;
     const session = JSON.parse(raw) as Session;
 
-    if (!session.accessToken || !Number.isFinite(session.expiresAt) || session.expiresAt <= Date.now()) {
+    if (
+      !session.accessToken ||
+      !Number.isFinite(session.expiresAt) ||
+      session.expiresAt <= Date.now()
+    ) {
       clearSession();
       return undefined;
     }

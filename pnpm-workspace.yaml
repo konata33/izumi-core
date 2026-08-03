@@ -1,3 +1,33 @@
 packages:
   - apps/*
   - packages/*
+
+# Haklex 0.31.1 still advertises the previous Lexical peer range. Keep a
+# single 0.48.0 runtime across the workspace while the editor integration is
+# covered by our compatibility tests.
+overrides:
+  lexical: 0.48.0
+  '@lexical/a11y': 0.48.0
+  '@lexical/clipboard': 0.48.0
+  '@lexical/code-core': 0.48.0
+  '@lexical/devtools-core': 0.48.0
+  '@lexical/dragon': 0.48.0
+  '@lexical/extension': 0.48.0
+  '@lexical/hashtag': 0.48.0
+  '@lexical/headless': 0.48.0
+  '@lexical/history': 0.48.0
+  '@lexical/html': 0.48.0
+  '@lexical/internal': 0.48.0
+  '@lexical/link': 0.48.0
+  '@lexical/list': 0.48.0
+  '@lexical/mark': 0.48.0
+  '@lexical/markdown': 0.48.0
+  '@lexical/overflow': 0.48.0
+  '@lexical/plain-text': 0.48.0
+  '@lexical/react': 0.48.0
+  '@lexical/rich-text': 0.48.0
+  '@lexical/selection': 0.48.0
+  '@lexical/table': 0.48.0
+  '@lexical/text': 0.48.0
+  '@lexical/utils': 0.48.0
+  '@lexical/yjs': 0.48.0

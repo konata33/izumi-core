@@ -3,78 +3,106 @@
  * Visual reference: mx-space/mx-admin. Change these values only through a
  * deliberate design-language update; application styles consume the roles.
  */
+@font-face {
+  font-family: 'Instrument Sans';
+  src: url('../assets/fonts/instrument-sans-variable.woff2') format('woff2');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 400 700;
+}
+
+@font-face {
+  font-family: 'Noto Sans SC';
+  src: url('../assets/fonts/noto-sans-sc-variable.woff2') format('woff2');
+  font-display: swap;
+  font-style: normal;
+  font-weight: 100 900;
+}
+
 :root {
   color-scheme: dark;
-  font-family: "Segoe UI", "Helvetica Neue", sans-serif, -apple-system, system-ui;
+  --mx-font-sans:
+    'Instrument Sans', 'Noto Sans SC', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--mx-font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   background: var(--mx-canvas);
   color: var(--mx-text);
 
   /* Surfaces and hierarchy */
-  --mx-canvas: #0a0a0a;
-  --mx-page: #161616;
-  --mx-raised: #1c1c1c;
-  --mx-input: #141414;
-  --mx-table-surface: #171717;
-  --mx-segmented-surface: #121212;
-  --mx-avatar-surface: #242424;
-  --mx-line: rgba(255, 255, 255, 0.08);
-  --mx-line-soft: rgba(255, 255, 255, 0.06);
-  --mx-hover: rgba(255, 255, 255, 0.04);
-  --mx-selected: rgba(255, 255, 255, 0.08);
-  --mx-quiet-fill: rgba(255, 255, 255, 0.025);
-  --mx-row-hover: rgba(255, 255, 255, 0.025);
-  --mx-empty-fill: rgba(255, 255, 255, 0.015);
-  --mx-active-fill: rgba(255, 255, 255, 0.1);
-  --mx-control-hover-line: rgba(255, 255, 255, 0.14);
-  --mx-control-focus-line: rgba(255, 255, 255, 0.35);
-  --mx-control-focus-ring: rgba(255, 255, 255, 0.06);
-  --mx-settings-action-fill: rgba(255, 255, 255, 0.08);
-  --mx-settings-action-hover: rgba(255, 255, 255, 0.14);
+  --mx-canvas: oklch(12% 0.008 75);
+  --mx-page: oklch(15% 0.008 75);
+  --mx-raised: oklch(18% 0.009 75);
+  --mx-input: oklch(14% 0.007 75);
+  --mx-table-surface: oklch(16.5% 0.008 75);
+  --mx-segmented-surface: oklch(13.5% 0.007 75);
+  --mx-avatar-surface: oklch(23% 0.011 75);
+  --mx-line: oklch(28% 0.009 75);
+  --mx-line-soft: oklch(22% 0.008 75);
+  --mx-hover: oklch(20.5% 0.01 75);
+  --mx-selected: oklch(24% 0.011 75);
+  --mx-quiet-fill: oklch(17% 0.008 75);
+  --mx-row-hover: oklch(19.5% 0.01 75);
+  --mx-empty-fill: oklch(15.8% 0.008 75);
+  --mx-active-fill: oklch(27% 0.011 75);
+  --mx-control-hover-line: oklch(38% 0.011 75);
+  --mx-control-focus-line: oklch(76% 0.018 75);
+  --mx-control-focus-ring: oklch(76% 0.018 75 / 0.16);
+  --mx-settings-action-fill: oklch(22% 0.01 75);
+  --mx-settings-action-hover: oklch(27% 0.011 75);
 
   /* Text and semantic feedback */
-  --mx-text: #fafafa;
-  --mx-text-inverse: #171717;
-  --mx-text-inverse-soft: #181818;
-  --mx-muted: #a3a3a3;
-  --mx-subtle: #737373;
-  --mx-label: #d4d4d4;
-  --mx-placeholder: #626262;
-  --mx-control-primary: #f2f2f2;
-  --mx-control-primary-hover: #fff;
-  --mx-focus: rgba(250, 250, 250, 0.7);
-  --mx-selection: rgba(255, 255, 255, 0.2);
-  --mx-danger: #f87171;
-  --mx-danger-strong: #fca5a5;
-  --mx-danger-line: rgba(248, 113, 113, 0.22);
-  --mx-danger-fill: rgba(248, 113, 113, 0.12);
-  --mx-danger-fill-hover: rgba(248, 113, 113, 0.18);
-  --mx-danger-notice-line: rgba(248, 113, 113, 0.28);
-  --mx-danger-notice-fill: rgba(248, 113, 113, 0.06);
-  --mx-danger-invalid-line: rgba(248, 113, 113, 0.8);
-  --mx-success: #bbf7d0;
-  --mx-success-line: rgba(134, 239, 172, 0.2);
-  --mx-success-fill: rgba(134, 239, 172, 0.055);
-  --mx-success-badge-line: rgba(134, 239, 172, 0.18);
-  --mx-success-badge-fill: rgba(134, 239, 172, 0.06);
+  --mx-text: oklch(94% 0.012 75);
+  --mx-text-inverse: oklch(17% 0.008 75);
+  --mx-text-inverse-soft: oklch(20% 0.009 75);
+  --mx-muted: oklch(73% 0.012 75);
+  --mx-subtle: oklch(55% 0.011 75);
+  --mx-label: oklch(84% 0.014 75);
+  --mx-placeholder: oklch(52% 0.01 75);
+  --mx-control-primary: oklch(95% 0.015 75);
+  --mx-control-primary-hover: oklch(98% 0.01 75);
+  --mx-focus: oklch(86% 0.025 75);
+  --mx-selection: oklch(78% 0.02 75 / 0.28);
+  --mx-danger: oklch(70% 0.13 25);
+  --mx-danger-strong: oklch(82% 0.08 25);
+  --mx-danger-line: oklch(45% 0.1 25);
+  --mx-danger-fill: oklch(22% 0.035 25);
+  --mx-danger-fill-hover: oklch(27% 0.05 25);
+  --mx-danger-notice-line: oklch(42% 0.08 25);
+  --mx-danger-notice-fill: oklch(19% 0.022 25);
+  --mx-danger-invalid-line: oklch(63% 0.14 25);
+  --mx-success: oklch(80% 0.08 145);
+  --mx-success-line: oklch(38% 0.055 145);
+  --mx-success-fill: oklch(20% 0.025 145);
+  --mx-success-badge-line: oklch(35% 0.048 145);
+  --mx-success-badge-fill: oklch(19% 0.022 145);
 
   /* Shadows and overlays */
-  --mx-popover-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  --mx-sheet-shadow: 0 -18px 48px rgba(0, 0, 0, 0.35);
-  --mx-overlay: rgba(0, 0, 0, 0.42);
-  --mx-skeleton-gradient: linear-gradient(90deg, #202020 25%, #292929 37%, #202020 63%);
-  --mx-mobile-sheet-handle: #444;
+  --mx-popover-shadow: 0 16px 36px oklch(7% 0.006 75 / 0.46);
+  --mx-sheet-shadow: 0 -18px 48px oklch(7% 0.006 75 / 0.48);
+  --mx-overlay: oklch(7% 0.006 75 / 0.56);
+  --mx-skeleton-fill: oklch(21% 0.009 75);
+  --mx-mobile-sheet-handle: oklch(38% 0.01 75);
 
   /* Type roles */
   --mx-font-size-symbol: 10px;
-  --mx-font-size-meta: 11px;
+  --mx-font-size-meta: 12px;
   --mx-font-size-label: 12px;
-  --mx-font-size-control: 13px;
-  --mx-font-size-body: 14px;
-  --mx-font-size-page: 18px;
-  --mx-font-size-page-legacy: 20px;
-  --mx-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --mx-font-size-control: 14px;
+  --mx-font-size-toolbar-context: 14px;
+  --mx-font-size-toolbar-context-mobile: 13px;
+  --mx-font-size-body: 16px;
+  --mx-font-size-editor-body: 17px;
+  --mx-font-size-section: 18px;
+  --mx-font-size-editor-heading-3: 1.25rem;
+  --mx-font-size-editor-heading-2: 1.5rem;
+  --mx-font-size-editor-heading-1: 2rem;
+  --mx-font-size-dialog-title: 22px;
+  --mx-font-size-page: clamp(24px, 1.2rem + 1vw, 32px);
+  --mx-font-size-page-legacy: 24px;
+  --mx-font-size-editor-title-mobile: clamp(24px, 8vw, 32px);
+  --mx-font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
   --mx-font-weight-body: 400;
   --mx-font-weight-label: 500;
   --mx-font-weight-heading: 600;
@@ -89,10 +117,57 @@
   --mx-settings-toolbar-height: 48px;
   --mx-header-action-size: 40px;
   --mx-content-gutter: 32px;
+  --mx-content-max-width: 72rem;
+  --mx-editor-measure: 48rem;
   --mx-settings-content-width: 768px;
   --mx-editor-aside-width: 252px;
   --mx-editor-drawer-width: 336px;
-  --mx-font-size-editor-title: 28px;
+  --mx-font-size-editor-title: clamp(36px, 3vw, 52px);
+  --mx-motion-instant: 120ms;
+  --mx-motion-feedback: 160ms;
+  --mx-motion-state: 220ms;
+  --mx-motion-panel-enter: 280ms;
+  --mx-motion-panel-exit: 200ms;
+  --mx-ease-in: cubic-bezier(0.7, 0, 0.84, 0);
   --mx-ease-out: cubic-bezier(0.25, 1, 0.5, 1);
   --mx-ease-snappy: cubic-bezier(0.22, 1, 0.36, 1);
+  --mx-ease-state: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* Auth remains an identity threshold, now within the same warm-ink family. */
+  --mx-auth-canvas: oklch(9% 0.008 75);
+  --mx-auth-surface: oklch(12% 0.008 75);
+  --mx-auth-surface-hover: oklch(16% 0.009 75);
+  --mx-auth-avatar: oklch(14% 0.009 75);
+  --mx-auth-line: oklch(33% 0.01 75);
+  --mx-auth-line-strong: oklch(67% 0.015 75);
+  --mx-auth-text: oklch(94% 0.012 75);
+  --mx-auth-muted: oklch(73% 0.012 75);
+  --mx-auth-subtle: oklch(52% 0.01 75);
+  --mx-auth-avatar-icon: oklch(78% 0.014 75);
+  --mx-auth-primary: oklch(95% 0.015 75);
+  --mx-auth-primary-hover: oklch(98% 0.01 75);
+  --mx-auth-inverse: oklch(17% 0.008 75);
+  --mx-auth-focus: oklch(80% 0.02 75 / 0.12);
+  --mx-auth-field-surface: oklch(10.5% 0.008 75);
+  --mx-auth-field-surface-hover: oklch(13% 0.009 75);
+  --mx-auth-field-surface-focus: oklch(16% 0.01 75);
+  --mx-auth-field-readonly-surface: oklch(10% 0.008 75);
+  --mx-auth-field-line: oklch(55% 0.014 75);
+  --mx-auth-field-focus: oklch(87% 0.02 75);
+  --mx-auth-placeholder: oklch(57% 0.01 75);
+  --mx-auth-field-height: 44px;
+  --mx-auth-field-radius: 0;
+  --mx-auth-branch-rgb: 222, 224, 220;
+  --mx-auth-branch-stem-alpha: 0.3;
+  --mx-auth-branch-stem-width: 0.86;
+  --mx-auth-branch-sprig-alpha: 0.22;
+  --mx-auth-branch-sprig-width: 0.64;
+  --mx-auth-branch-tip-alpha: 0.15;
+  --mx-auth-branch-tip-width: 0.5;
+  --mx-font-auth: 'Instrument Sans', 'Noto Sans SC', sans-serif;
+  --mx-font-size-auth-title: clamp(29px, 3vw, 32px);
+  --mx-font-size-auth-label: 12px;
+  --mx-font-size-auth-control: 15px;
+  --mx-font-size-auth-help: 13px;
+  --mx-font-size-auth-action: 14px;
 }

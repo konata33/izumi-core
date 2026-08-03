@@ -9,17 +9,30 @@ import { ApiException } from '../common/api-exception.js';
 import { APP_CONFIG, type AppConfig } from '../config/app-config.js';
 import { DATABASE, type Database } from '../database/database.module.js';
 import { owners } from '../database/schema.js';
-import type { AuthTokenDto, OwnerLoginDto, OwnerSetupDto } from './auth.dto.js';
+import type {
+  AuthTokenDto,
+  OwnerAuthStatusDto,
+  OwnerLoginDto,
+  OwnerSetupDto,
+} from './auth.dto.js';
 
 type OwnerRecord = typeof owners.$inferSelect;
 
+function normalizeUsername(username: string): string {
+  return username.normalize('NFKC').toLocaleLowerCase('en-US');
+}
+
 function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
+  let current = error;
+
+  for (let depth = 0; depth < 3; depth += 1) {
+    if (typeof current !== 'object' || current === null) return false;
+    if ('code' in current && current.code === '23505') return true;
+    if (!('cause' in current)) return false;
+    current = current.cause;
+  }
+
+  return false;
 }
 
 @Injectable()
@@ -42,14 +55,14 @@ export class AuthService {
       );
     }
 
-    const email = input.email.trim().toLowerCase();
+    const username = normalizeUsername(input.username);
 
     try {
       const [owner] = await this.database
         .insert(owners)
         .values({
           id: randomUUID(),
-          email,
+          username,
           passwordHash: await hash(input.password, 12),
         })
         .returning();
@@ -69,22 +82,33 @@ export class AuthService {
   }
 
   async login(input: OwnerLoginDto): Promise<AuthTokenDto> {
-    const email = input.email.trim().toLowerCase();
+    const username = normalizeUsername(input.username);
     const [owner] = await this.database
       .select()
       .from(owners)
-      .where(eq(owners.email, email))
+      .where(eq(owners.username, username))
       .limit(1);
 
     if (!owner || !(await compare(input.password, owner.passwordHash))) {
       throw new ApiException(
         'INVALID_CREDENTIALS',
-        'Email or password is incorrect',
+        'Username or password is incorrect',
         HttpStatus.UNAUTHORIZED,
       );
     }
 
     return this.issueToken(owner);
+  }
+
+  async getOwnerAuthStatus(): Promise<OwnerAuthStatusDto> {
+    const [owner] = await this.database
+      .select({ username: owners.username })
+      .from(owners)
+      .limit(1);
+
+    return owner
+      ? { initialized: true, username: owner.username }
+      : { initialized: false };
   }
 
   async ownerExists(ownerId: string): Promise<boolean> {
@@ -98,7 +122,7 @@ export class AuthService {
 
   private async issueToken(owner: OwnerRecord): Promise<AuthTokenDto> {
     const accessToken = await this.jwt.signAsync(
-      { email: owner.email },
+      {},
       {
         subject: owner.id,
         expiresIn: this.config.jwtExpiresInSeconds,

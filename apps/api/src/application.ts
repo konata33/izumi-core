@@ -11,6 +11,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module.js';
 import { ApiExceptionFilter } from './common/api-exception.filter.js';
 import { type AppConfig, loadConfig } from './config/app-config.js';
+import { MAX_REQUEST_ENVELOPE_BYTES } from './posts/rich-content.js';
 
 export function createOpenApiDocument(app: NestFastifyApplication) {
   return SwaggerModule.createDocument(
@@ -69,7 +70,11 @@ export async function createApplication(
 ): Promise<NestFastifyApplication> {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule.register(config),
-    new FastifyAdapter({ logger: false, requestIdHeader: 'x-request-id' }),
+    new FastifyAdapter({
+      logger: false,
+      requestIdHeader: 'x-request-id',
+      bodyLimit: MAX_REQUEST_ENVELOPE_BYTES,
+    }),
   );
 
   const corsOrigin =
@@ -82,7 +87,8 @@ export async function createApplication(
   app.enableCors({
     origin: corsOrigin,
     credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    exposedHeaders: ['ETag', 'X-AI-Run-Id'],
   });
   app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(

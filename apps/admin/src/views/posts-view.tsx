@@ -1,59 +1,96 @@
 import { useQuery } from '@tanstack/react-query';
-import { FilePenLineIcon, PencilLineIcon, PlusIcon, RefreshCwIcon, SearchIcon } from 'lucide-react';
-import { useEffect, useMemo } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { PencilLineIcon, PlusIcon, RefreshCwIcon, SearchIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 
 import { FeedbackAlert } from '@/components/feedback-alert';
 import { HeaderAction } from '@/components/header-action';
 import { PageFrame } from '@/components/page-frame';
 import { StatusBadge } from '@/components/status-badge';
-import { core, CoreRequestError, type PostList, type PostStatus } from '@/lib/core';
+import { StatusFilter, type FilterStatus } from '@/components/status-filter';
+import { core, CoreRequestError, type PostList } from '@/lib/core';
 import { messageForError } from '@/lib/errors';
 import { formatDate, formatShortDate } from '@/lib/format';
 import { clearSession, getSession } from '@/lib/session';
 
-type FilterStatus = 'all' | PostStatus;
-
-const filters: ReadonlyArray<{ value: FilterStatus; label: string }> = [
-  { value: 'all', label: '全部' },
-  { value: 'draft', label: '草稿' },
-  { value: 'published', label: '已发布' },
-];
-
 const emptyPosts: PostList = { items: [], page: 1, size: 20, total: 0 };
 
 export function PostsView() {
+  const location = useLocation();
   const navigate = useNavigate();
   const session = getSession();
   const [searchParams, setSearchParams] = useSearchParams();
+  const [inputModality, setInputModality] = useState<'keyboard' | 'pointer'>(
+    'keyboard',
+  );
   const filterParam = searchParams.get('status');
-  const filter = filters.some(({ value }) => value === filterParam) ? (filterParam as FilterStatus) : 'all';
+  const filter: FilterStatus =
+    filterParam === 'draft' || filterParam === 'published' ? filterParam : 'all';
   const query = searchParams.get('q') ?? '';
+  const normalizedQuery = query.trim();
   const requestedPage = Number.parseInt(searchParams.get('page') ?? '1', 10);
   const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const returnTo = `${location.pathname}${location.search}`;
 
   const postsQuery = useQuery({
-    queryKey: ['posts', filter, page],
-    queryFn: () => core.listPosts(session!.accessToken, { page, size: 20, status: filter === 'all' ? undefined : filter }),
+    queryKey: ['posts', filter, page, normalizedQuery],
+    queryFn: () =>
+      core.listPosts(session!.accessToken, {
+        page,
+        size: 20,
+        status: filter === 'all' ? undefined : filter,
+        q: normalizedQuery || undefined,
+      }),
   });
 
   useEffect(() => {
-    if (postsQuery.error instanceof CoreRequestError && postsQuery.error.status === 401) {
+    if (
+      postsQuery.error instanceof CoreRequestError &&
+      postsQuery.error.status === 401
+    ) {
       clearSession();
       navigate('/auth', { replace: true });
     }
   }, [navigate, postsQuery.error]);
 
+  useEffect(() => {
+    const usePointer = () => setInputModality('pointer');
+    const useKeyboard = () => setInputModality('keyboard');
+    window.addEventListener('pointerdown', usePointer, true);
+    window.addEventListener('keydown', useKeyboard, true);
+    return () => {
+      window.removeEventListener('pointerdown', usePointer, true);
+      window.removeEventListener('keydown', useKeyboard, true);
+    };
+  }, []);
+
+  useEffect(() => {
+    const serialized = sessionStorage.getItem('izumi:posts-scroll-position');
+    if (!serialized) return;
+
+    try {
+      const saved = JSON.parse(serialized) as { path?: string; top?: number };
+      if (saved.path !== returnTo || typeof saved.top !== 'number') return;
+      requestAnimationFrame(() =>
+        window.scrollTo({ top: saved.top, behavior: 'instant' }),
+      );
+      sessionStorage.removeItem('izumi:posts-scroll-position');
+    } catch {
+      sessionStorage.removeItem('izumi:posts-scroll-position');
+    }
+  }, [returnTo]);
+
   const posts = postsQuery.data ?? emptyPosts;
   const totalPages = Math.max(1, Math.ceil(posts.total / posts.size));
-  const visiblePosts = useMemo(() => {
-    const normalizedQuery = query.trim().toLocaleLowerCase();
-    if (!normalizedQuery) return posts.items;
+  const visiblePosts = posts.items;
 
-    return posts.items.filter((post) => [post.title, post.slug, post.section, ...post.tags]
-      .filter(Boolean)
-      .some((value) => value.toLocaleLowerCase().includes(normalizedQuery)));
-  }, [posts.items, query]);
+  function rememberListPosition() {
+    sessionStorage.setItem(
+      'izumi:posts-scroll-position',
+      JSON.stringify({ path: returnTo, top: window.scrollY }),
+    );
+  }
+
   function chooseFilter(next: FilterStatus) {
     if (next === filter) return;
     setSearchParams((current) => {
@@ -80,121 +117,280 @@ export function PostsView() {
       const next = value.trim();
       if (next) params.set('q', value);
       else params.delete('q');
+      params.delete('page');
       return params;
     });
   }
 
   const error = postsQuery.error ? messageForError(postsQuery.error) : undefined;
-  const noResults = !postsQuery.isPending && !postsQuery.error && visiblePosts.length === 0;
+  const noResults =
+    !postsQuery.isPending && !postsQuery.error && visiblePosts.length === 0;
+  const editorState = { returnTo };
 
   return (
     <PageFrame
-      actions={(
+      actions={
         <div className="mx-actions">
-            <HeaderAction label="刷新文章列表" disabled={postsQuery.isFetching} onClick={() => void postsQuery.refetch()}>
-              <RefreshCwIcon className={postsQuery.isFetching ? 'mx-spin' : undefined} />
-            </HeaderAction>
-            <Link aria-label="新建文章" className="mx-header-action is-primary" title="新建文章" to="/posts/new"><PlusIcon /></Link>
+          <HeaderAction
+            label="刷新文章列表"
+            disabled={postsQuery.isFetching}
+            onClick={() => void postsQuery.refetch()}
+          >
+            <RefreshCwIcon className={postsQuery.isFetching ? 'mx-spin' : undefined} />
+          </HeaderAction>
+          <Link
+            aria-label="新建文章"
+            className="mx-header-action is-primary is-label"
+            state={editorState}
+            title="新建文章"
+            to="/posts/new"
+            onClick={rememberListPosition}
+          >
+            <PlusIcon />
+            <span className="mx-header-action-label">新建文章</span>
+          </Link>
         </div>
-      )}
+      }
+      subtitle={postsQuery.isPending ? '正在载入' : `${posts.total} 篇`}
       className="mx-list-page"
       title="文章"
     >
+      <div className="mx-list-toolbar">
+        <label className="mx-search" data-focus-modality={inputModality}>
+          <SearchIcon aria-hidden="true" />
+          <span className="sr-only">搜索全部文章</span>
+          <input
+            aria-label="搜索全部文章"
+            autoComplete="off"
+            className="mx-search-input"
+            name="post-search"
+            placeholder="搜索标题、摘要或标签…"
+            value={query}
+            onChange={(event) => changeSearch(event.target.value)}
+          />
+        </label>
+        <StatusFilter
+          disabled={postsQuery.isPending}
+          value={filter}
+          onValueChange={chooseFilter}
+        />
+      </div>
 
-        <div className="mx-filterbar mx-list-filterbar">
-          <label className="mx-search">
-            <SearchIcon />
-            <input aria-label="搜索当前页文章" className="mx-control" placeholder="搜索当前页文章" value={query} onChange={(event) => changeSearch(event.target.value)} />
-          </label>
-          <label className="mx-list-status">
-            <span className="sr-only">文章状态筛选</span>
-            <select aria-label="文章状态筛选" className="mx-control" value={filter} onChange={(event) => chooseFilter(event.target.value as FilterStatus)}>
-              {filters.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-            </select>
-          </label>
+      {error ? (
+        <div className="mx-post-error">
+          <FeedbackAlert notice={{ kind: 'error', message: error }} />
+          <button
+            className="mx-button is-secondary"
+            type="button"
+            onClick={() => void postsQuery.refetch()}
+          >
+            <RefreshCwIcon />
+            重新连接
+          </button>
         </div>
+      ) : null}
 
-        {error ? (
-          <div className="mx-post-error">
-            <FeedbackAlert notice={{ kind: 'error', message: error }} />
-            <button className="mx-button is-secondary" type="button" onClick={() => void postsQuery.refetch()}><RefreshCwIcon />重新连接</button>
-          </div>
-        ) : null}
+      {postsQuery.isPending ? <PostsSkeleton /> : null}
 
-        {postsQuery.isPending ? <PostsSkeleton /> : null}
-
-        {!postsQuery.isPending && !error && visiblePosts.length > 0 ? (
-          <>
-            <section className="mx-table-wrap mx-post-desktop-table" aria-label="文章列表">
-              <table className="mx-table">
+      {!postsQuery.isPending && !error && visiblePosts.length > 0 ? (
+        <>
+          <section className="mx-post-desktop-table" aria-label="文章列表">
+            <table className="mx-table">
               <thead>
                 <tr>
-                  <th className="mx-table-title-cell">标题</th>
-                  <th className="hide-mobile">栏目</th>
-                  <th className="hide-tablet">标签</th>
+                  <th className="mx-table-title-cell">文章</th>
+                  <th className="hide-tablet">归档</th>
                   <th className="hide-mobile">状态</th>
-                  <th className="hide-tablet">创建于</th>
-                  <th className="hide-tablet mx-table-right">修改于</th>
-                  <th className="mx-table-actions hide-mobile"><span className="sr-only">操作</span></th>
+                  <th className="hide-tablet mx-table-right">最近编辑</th>
+                  <th className="mx-table-actions hide-mobile">
+                    <span className="sr-only">操作</span>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {visiblePosts.map((post) => (
                   <tr key={post.id}>
                     <td className="mx-table-title-cell">
-                      <Link className="mx-table-title" to={`/posts/${post.id}`}>{post.title}</Link>
+                      <Link
+                        className="mx-table-title"
+                        state={editorState}
+                        to={`/posts/${post.id}`}
+                        onClick={rememberListPosition}
+                      >
+                        {post.title}
+                      </Link>
+                      {post.excerpt ? (
+                        <p className="mx-table-excerpt">{post.excerpt}</p>
+                      ) : null}
                       <p className="mx-table-slug">/{post.slug}</p>
                     </td>
-                    <td className="hide-mobile"><span className="mx-table-muted">{post.section || '—'}</span></td>
-                    <td className="hide-tablet"><span className="mx-table-muted">{post.tags.length ? post.tags.join(' · ') : '—'}</span></td>
-                    <td className="hide-mobile"><StatusBadge status={post.status} /></td>
-                    <td className="hide-tablet"><time className="mx-table-date" dateTime={post.createdAt} title={formatDate(post.createdAt)}>{formatShortDate(post.createdAt)}</time></td>
-                    <td className="hide-tablet mx-table-right"><time className="mx-table-date" dateTime={post.updatedAt} title={formatDate(post.updatedAt)}>{formatShortDate(post.updatedAt)}</time></td>
-                    <td className="mx-table-actions hide-mobile"><Link className="mx-button is-quiet is-small" to={`/posts/${post.id}`}><PencilLineIcon />编辑</Link></td>
+                    <td className="hide-tablet">
+                      <div className="mx-table-archive">
+                        {post.section ? (
+                          <span>{post.section}</span>
+                        ) : (
+                          <span className="mx-table-muted">未归档</span>
+                        )}
+                        {post.tags.length ? (
+                          <span className="mx-table-tags">
+                            {post.tags.slice(0, 2).join(' · ')}
+                            {post.tags.length > 2 ? ` · +${post.tags.length - 2}` : ''}
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td className="hide-mobile">
+                      <StatusBadge status={post.status} />
+                    </td>
+                    <td className="hide-tablet mx-table-right">
+                      <time
+                        className="mx-table-date"
+                        dateTime={post.updatedAt}
+                        title={formatDate(post.updatedAt)}
+                      >
+                        {formatShortDate(post.updatedAt)}
+                      </time>
+                    </td>
+                    <td className="mx-table-actions hide-mobile">
+                      <Link
+                        className="mx-row-edit"
+                        state={editorState}
+                        to={`/posts/${post.id}`}
+                        onClick={rememberListPosition}
+                      >
+                        <PencilLineIcon />
+                        编辑
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
-              </table>
-              {posts.total > posts.size ? (
-                <div className="mx-pagination">
-                  <button className="mx-button is-secondary is-small" disabled={page === 1} type="button" onClick={() => choosePage(page - 1)}>上一页</button>
-                  <span className="mx-pagination-label">{page} / {totalPages}</span>
-                  <button className="mx-button is-secondary is-small" disabled={page === totalPages} type="button" onClick={() => choosePage(page + 1)}>下一页</button>
-                </div>
-              ) : null}
-            </section>
-            <MobilePostList items={visiblePosts} />
-          </>
-        ) : null}
-
-        {noResults ? (
-          <section className="mx-empty">
-            <div className="mx-empty-inner">
-              <span className="mx-empty-icon"><FilePenLineIcon /></span>
-              <h2>{query ? '没有匹配的文章' : filter === 'all' ? '还没有文章' : `还没有${filter === 'draft' ? '草稿' : '已发布文章'}`}</h2>
-              <p>{query ? '尝试其他关键词。' : filter === 'all' ? '开始写第一篇文章。' : '切换筛选，或新建文章。'}</p>
-              {filter === 'all' ? <Link className="mx-button" to="/posts/new"><PlusIcon />新建文章</Link> : null}
-            </div>
+            </table>
+            {posts.total > posts.size ? (
+              <div className="mx-pagination">
+                <button
+                  className="mx-button is-secondary is-small"
+                  disabled={page === 1}
+                  type="button"
+                  onClick={() => choosePage(page - 1)}
+                >
+                  上一页
+                </button>
+                <span className="mx-pagination-label">
+                  第 {page} / {totalPages} 页
+                </span>
+                <button
+                  className="mx-button is-secondary is-small"
+                  disabled={page === totalPages}
+                  type="button"
+                  onClick={() => choosePage(page + 1)}
+                >
+                  下一页
+                </button>
+              </div>
+            ) : null}
           </section>
-        ) : null}
+          <MobilePostList
+            items={visiblePosts}
+            onOpen={rememberListPosition}
+            state={editorState}
+          />
+        </>
+      ) : null}
+
+      {noResults ? (
+        <section
+          className={`mx-empty${query || filter !== 'all' ? ' is-filtered' : ''}`}
+        >
+          {query ? (
+            <>
+              <p className="mx-empty-kicker">没有匹配结果</p>
+              <h2>换一个关键词试试</h2>
+              <button
+                className="mx-button is-secondary"
+                type="button"
+                onClick={() => changeSearch('')}
+              >
+                清除搜索
+              </button>
+            </>
+          ) : filter !== 'all' ? (
+            <>
+              <p className="mx-empty-kicker">当前筛选为空</p>
+              <h2>还没有{filter === 'draft' ? '草稿' : '已发布文章'}</h2>
+              <button
+                className="mx-button is-secondary"
+                type="button"
+                onClick={() => chooseFilter('all')}
+              >
+                查看全部文章
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="mx-empty-kicker">0 篇文章</p>
+              <h2>从第一篇文章开始</h2>
+              <p>标题、正文与发布信息都会在独立写作页中完成。</p>
+              <Link
+                className="mx-button"
+                state={editorState}
+                to="/posts/new"
+                onClick={rememberListPosition}
+              >
+                <PlusIcon />
+                开始第一篇文章
+              </Link>
+            </>
+          )}
+        </section>
+      ) : null}
     </PageFrame>
   );
 }
 
-function MobilePostList({ items }: { items: PostList['items'] }) {
+function MobilePostList({
+  items,
+  onOpen,
+  state,
+}: {
+  items: PostList['items'];
+  onOpen: () => void;
+  state: { returnTo: string };
+}) {
   return (
     <section aria-label="文章列表" className="mx-post-mobile-list">
       {items.map((post) => (
         <article key={post.id} className="mx-post-mobile-item">
           <div className="mx-post-mobile-copy">
-            <Link className="mx-post-mobile-title" to={`/posts/${post.id}`}>{post.title}</Link>
+            <Link
+              className="mx-post-mobile-title"
+              state={state}
+              to={`/posts/${post.id}`}
+              onClick={onOpen}
+            >
+              {post.title}
+            </Link>
+            {post.excerpt ? (
+              <p className="mx-post-mobile-excerpt">{post.excerpt}</p>
+            ) : null}
             <div className="mx-post-mobile-meta">
-              {post.section ? <span className="mx-post-mobile-section">{post.section}</span> : null}
-              <time dateTime={post.updatedAt} title={formatDate(post.updatedAt)}>{formatShortDate(post.updatedAt)}</time>
+              {post.section ? <span>{post.section}</span> : null}
+              <time dateTime={post.updatedAt} title={formatDate(post.updatedAt)}>
+                {formatShortDate(post.updatedAt)}
+              </time>
               <StatusBadge status={post.status} />
             </div>
           </div>
-          <Link aria-label={`编辑 ${post.title}`} className="mx-post-mobile-edit" title="编辑文章" to={`/posts/${post.id}`}><PencilLineIcon /></Link>
+          <Link
+            aria-label={`编辑 ${post.title}`}
+            className="mx-post-mobile-edit"
+            state={state}
+            title="编辑文章"
+            to={`/posts/${post.id}`}
+            onClick={onOpen}
+          >
+            <PencilLineIcon />
+          </Link>
         </article>
       ))}
     </section>
@@ -206,7 +402,10 @@ function PostsSkeleton() {
     <div className="mx-list-skeleton" aria-label="正在加载文章列表" aria-busy="true">
       {Array.from({ length: 6 }, (_, index) => (
         <div key={index} className="mx-list-skeleton-row">
-          <div className="mx-list-skeleton-copy"><span className="mx-skeleton mx-list-skeleton-title" /><span className="mx-skeleton mx-list-skeleton-slug" /></div>
+          <div className="mx-list-skeleton-copy">
+            <span className="mx-skeleton mx-list-skeleton-title" />
+            <span className="mx-skeleton mx-list-skeleton-slug" />
+          </div>
           <span className="mx-skeleton mx-list-skeleton-badge" />
         </div>
       ))}

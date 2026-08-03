@@ -1,42 +1,73 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
   IsArray,
   IsEnum,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
+
+import type { RichDocument } from './rich-content.js';
 
 export enum PostStatus {
   Draft = 'draft',
   Published = 'published',
 }
 
+export enum PostContentMigrationState {
+  Native = 'native',
+  Pending = 'pending',
+  Failed = 'failed',
+}
+
 export class CreatePostDto {
-  @ApiProperty({ type: String, example: 'A first post' })
+  @ApiPropertyOptional({
+    type: String,
+    example: 'A first post',
+    description: 'May be omitted for a newly-created draft shell.',
+  })
+  @IsOptional()
   @IsString()
   @MinLength(1)
   @Matches(/\S/)
-  title!: string;
+  title?: string;
 
-  @ApiProperty({ type: String, example: 'a-first-post' })
+  @ApiPropertyOptional({
+    type: String,
+    example: 'a-first-post',
+    description: 'Generated for a draft when omitted.',
+  })
+  @IsOptional()
   @IsString()
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-  slug!: string;
+  slug?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     type: String,
-    example: 'The post body in the selected source format.',
+    example: 'Compatibility Markdown for legacy clients.',
+    description:
+      'Imported into a RichDocument when document is omitted. When document is supplied, the server derives this field.',
   })
+  @IsOptional()
   @IsString()
-  @MinLength(1)
-  @Matches(/\S/)
-  content!: string;
+  content?: string;
+
+  @ApiPropertyOptional({
+    type: Object,
+    additionalProperties: true,
+    description: 'Canonical serialized Lexical editor state.',
+  })
+  @IsOptional()
+  @IsObject()
+  document?: RichDocument;
 
   @ApiPropertyOptional({
     type: String,
@@ -93,9 +124,17 @@ export class UpdatePostDto {
   @ApiPropertyOptional({ type: String, example: 'Updated canonical Markdown.' })
   @IsOptional()
   @IsString()
-  @MinLength(1)
-  @Matches(/\S/)
   content?: string;
+
+  @ApiPropertyOptional({
+    type: Object,
+    additionalProperties: true,
+    description:
+      'Canonical serialized Lexical editor state. The server derives compatibility Markdown from it.',
+  })
+  @IsOptional()
+  @IsObject()
+  document?: RichDocument;
 
   @ApiPropertyOptional({
     type: String,
@@ -145,6 +184,12 @@ export class ListPostsQueryDto {
   @IsOptional()
   @IsEnum(PostStatus)
   status?: PostStatus;
+
+  @ApiPropertyOptional({ type: String, maxLength: 200 })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  q?: string;
 }
 
 export class PostDto {
@@ -160,6 +205,16 @@ export class PostDto {
   @ApiProperty({ type: String })
   content!: string;
 
+  @ApiProperty({
+    type: Object,
+    additionalProperties: true,
+    description: 'Canonical serialized Lexical editor state.',
+  })
+  document!: RichDocument;
+
+  @ApiProperty({ enum: PostContentMigrationState })
+  contentMigrationState!: PostContentMigrationState;
+
   @ApiProperty({ type: String })
   excerpt!: string;
 
@@ -174,6 +229,12 @@ export class PostDto {
 
   @ApiProperty({ enum: PostStatus })
   status!: PostStatus;
+
+  @ApiProperty({ type: Number, minimum: 1 })
+  revision!: number;
+
+  @ApiProperty({ type: Boolean })
+  hasUnpublishedChanges!: boolean;
 
   @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
   publishedAt!: string | null;
@@ -250,9 +311,84 @@ export class PublicPostDetailDto extends PublicPostSummaryDto {
   @ApiProperty({
     type: String,
     example: '## 先让内容找到位置\n\n正文以 Markdown 保存。',
-    description: 'Canonical owner-authored Markdown source.',
+    description: 'Compatibility Markdown derived from the RichDocument.',
   })
   content!: string;
+
+  @ApiProperty({
+    type: Object,
+    additionalProperties: true,
+    description: 'Canonical serialized Lexical editor state.',
+  })
+  document!: RichDocument;
+
+  @ApiProperty({ type: () => PublicPostReferenceDto, isArray: true })
+  references!: PublicPostReferenceDto[];
+}
+
+export class PublicPostReferenceDto {
+  @ApiProperty({ type: String, format: 'uuid' })
+  postId!: string;
+
+  @ApiProperty({ type: String })
+  slug!: string;
+
+  @ApiProperty({ type: String })
+  title!: string;
+}
+
+export class ResolvePostReferencesDto {
+  @ApiProperty({ type: String, isArray: true, maxItems: 100 })
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  @MinLength(1, { each: true })
+  @MaxLength(64, { each: true })
+  postIds!: string[];
+}
+
+export class PostReferencesResponseDto {
+  @ApiProperty({ type: () => PublicPostReferenceDto, isArray: true })
+  data!: PublicPostReferenceDto[];
+}
+
+export class ForkWorkingCopyDto {
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  slug?: string;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsString()
+  content?: string;
+
+  @ApiPropertyOptional({ type: Object, additionalProperties: true })
+  @IsOptional()
+  @IsObject()
+  document?: RichDocument;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsString()
+  excerpt?: string;
+
+  @ApiPropertyOptional({ type: String })
+  @IsOptional()
+  @IsString()
+  section?: string;
+
+  @ApiPropertyOptional({ type: String, isArray: true })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  tags?: string[];
 }
 
 export class PublicPostListResponseDto {
