@@ -6,6 +6,9 @@ import { ConfigModule } from './config/config.module.js';
 import type { AppConfig } from './config/app-config.js';
 import { DatabaseModule } from './database/database.module.js';
 import { HealthModule } from './health/health.module.js';
+import { AiModule } from './ai/ai.module.js';
+import { LinkCardModule } from './link-cards/link-card.module.js';
+import { MediaModule } from './media/media.module.js';
 import { PostsModule } from './posts/posts.module.js';
 import { ProfilesModule } from './profiles/profiles.module.js';
 
@@ -21,6 +24,9 @@ export class AppModule {
         HealthModule,
         PostsModule,
         ProfilesModule,
+        LinkCardModule,
+        MediaModule,
+        AiModule,
       ],
     };
   }

@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
   HttpStatus,
   Inject,
   Post,
+  ValidationPipe,
 } from '@nestjs/common';
 import {
   ApiConflictResponse,
@@ -20,13 +22,32 @@ import {
 } from '@nestjs/swagger';
 
 import { ApiErrorResponseDto } from '../common/openapi.js';
-import { AuthTokenResponseDto, OwnerLoginDto, OwnerSetupDto } from './auth.dto.js';
+import {
+  AuthTokenResponseDto,
+  OwnerAuthStatusResponseDto,
+  OwnerLoginDto,
+  OwnerSetupDto,
+} from './auth.dto.js';
 import { AuthService } from './auth.service.js';
+
+const ownerSetupValidation = new ValidationPipe({
+  expectedType: OwnerSetupDto,
+  transform: true,
+  whitelist: true,
+  forbidNonWhitelisted: true,
+});
 
 @ApiTags('owner-auth')
 @Controller('auth')
 export class AuthController {
   constructor(@Inject(AuthService) private readonly authService: AuthService) {}
+
+  @Get('status')
+  @ApiOperation({ summary: 'Get the singleton owner authentication status' })
+  @ApiOkResponse({ type: OwnerAuthStatusResponseDto })
+  async status(): Promise<OwnerAuthStatusResponseDto> {
+    return { data: await this.authService.getOwnerAuthStatus() };
+  }
 
   @Post('setup')
   @ApiOperation({ summary: 'Configure the one Izumi owner' })
@@ -36,7 +57,7 @@ export class AuthController {
   @ApiConflictResponse({ type: ApiErrorResponseDto })
   @ApiForbiddenResponse({ type: ApiErrorResponseDto })
   async setup(
-    @Body() input: OwnerSetupDto,
+    @Body(ownerSetupValidation) input: OwnerSetupDto,
     @Headers('x-izumi-setup-token') setupToken: string | undefined,
   ): Promise<AuthTokenResponseDto> {
     return { data: await this.authService.setupOwner(input, setupToken) };
@@ -48,7 +69,17 @@ export class AuthController {
   @ApiBody({ type: OwnerLoginDto })
   @ApiOkResponse({ type: AuthTokenResponseDto })
   @ApiUnauthorizedResponse({ type: ApiErrorResponseDto })
-  async login(@Body() input: OwnerLoginDto): Promise<AuthTokenResponseDto> {
+  async login(
+    @Body(
+      new ValidationPipe({
+        expectedType: OwnerLoginDto,
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    input: OwnerLoginDto,
+  ): Promise<AuthTokenResponseDto> {
     return { data: await this.authService.login(input) };
   }
 }

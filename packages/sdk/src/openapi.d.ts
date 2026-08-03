@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/api/v1/auth/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get the singleton owner authentication status */
+        get: operations["AuthController_status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/setup": {
         parameters: {
             query?: never;
@@ -73,6 +90,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/posts/references/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve live publication snapshots for editor post references */
+        post: operations["PostsController_resolveReferences"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/posts/{id}": {
         parameters: {
             query?: never;
@@ -88,10 +122,81 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * Save a post or change its publication state as the owner
-         * @description The first draft-to-published transition records publishedAt; later edits and re-publication retain it.
+         * Save the mutable working copy as the owner
+         * @description Uses optimistic concurrency. New clients should use the explicit publication commands instead of status.
          */
         patch: operations["PostsController_update"];
+        trace?: never;
+    };
+    "/api/v1/posts/{id}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish the current working copy as a new snapshot */
+        post: operations["PostsController_publish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/posts/{id}/unpublish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take the live snapshot offline without deleting it */
+        post: operations["PostsController_unpublish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/posts/{id}/discard-working-copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Restore the latest retained publication snapshot */
+        post: operations["PostsController_discardWorkingCopy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/posts/{id}/fork-working-copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fork a working copy into a new draft
+         * @description Does not require If-Match so a client can preserve local edits after a revision conflict.
+         */
+        post: operations["PostsController_forkWorkingCopy"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/public/posts": {
@@ -166,13 +271,238 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/link-cards/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve and cache safe metadata for a link card */
+        post: operations["LinkCardController_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Initiate a direct media upload */
+        post: operations["MediaController_initiate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{id}/finalize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Verify and finalize an uploaded media object */
+        post: operations["MediaController_finalize"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/media/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get a media asset owned by the current owner */
+        get: operations["MediaController_find"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AiController_listProviders"];
+        put?: never;
+        post: operations["AiController_createProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/providers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["AiController_deleteProvider"];
+        options?: never;
+        head?: never;
+        patch: operations["AiController_updateProvider"];
+        trace?: never;
+    };
+    "/api/v1/ai/providers/{id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AiController_testProvider"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/posts/{postId}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AiController_listSessions"];
+        put?: never;
+        post: operations["AiController_createSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/sessions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AiController_findSession"];
+        put?: never;
+        post?: never;
+        delete: operations["AiController_deleteSession"];
+        options?: never;
+        head?: never;
+        patch: operations["AiController_renameSession"];
+        trace?: never;
+    };
+    "/api/v1/ai/sessions/{id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run the selected AI provider and stream normalized SSE */
+        post: operations["AiController_startRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/sessions/{id}/runs/{runId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AiController_cancelRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/ai/sessions/{id}/tool-decisions/{decisionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["AiController_decideToolCall"];
+        trace?: never;
+    };
+    "/api/v1/ai/sessions/{id}/tool-calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["AiController_recordToolCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        OwnerAuthStatusDto: {
+            /** @example true */
+            initialized: boolean;
+            /**
+             * @description Present only after the singleton owner has been initialized.
+             * @example owner
+             */
+            username?: string;
+        };
+        OwnerAuthStatusResponseDto: {
+            data: components["schemas"]["OwnerAuthStatusDto"];
+        };
         OwnerSetupDto: {
-            /** @example owner@example.com */
-            email: string;
+            /** @example owner */
+            username: string;
             /** @example correct-horse-battery-staple */
             password: string;
         };
@@ -194,7 +524,7 @@ export interface components {
             /**
              * @example {
              *       "issues": [
-             *         "email must be an email"
+             *         "username must not contain whitespace"
              *       ]
              *     }
              */
@@ -208,8 +538,8 @@ export interface components {
             error: components["schemas"]["ErrorEnvelopeDto"];
         };
         OwnerLoginDto: {
-            /** @example owner@example.com */
-            email: string;
+            /** @example owner */
+            username: string;
             /** @example correct-horse-battery-staple */
             password: string;
         };
@@ -229,14 +559,28 @@ export interface components {
             size: number;
             /** @enum {string} */
             status?: "draft" | "published";
+            q?: string;
         };
         CreatePostDto: {
-            /** @example A first post */
-            title: string;
-            /** @example a-first-post */
-            slug: string;
-            /** @example The post body in the selected source format. */
-            content: string;
+            /**
+             * @description May be omitted for a newly-created draft shell.
+             * @example A first post
+             */
+            title?: string;
+            /**
+             * @description Generated for a draft when omitted.
+             * @example a-first-post
+             */
+            slug?: string;
+            /**
+             * @description Imported into a RichDocument when document is omitted. When document is supplied, the server derives this field.
+             * @example Compatibility Markdown for legacy clients.
+             */
+            content?: string;
+            /** @description Canonical serialized Lexical editor state. */
+            document?: {
+                [key: string]: unknown;
+            };
             /**
              * @description Required and non-empty when creating a published post.
              * @example A short editorial introduction.
@@ -265,12 +609,20 @@ export interface components {
             title: string;
             slug: string;
             content: string;
+            /** @description Canonical serialized Lexical editor state. */
+            document: {
+                [key: string]: unknown;
+            };
+            /** @enum {string} */
+            contentMigrationState: "native" | "pending" | "failed";
             excerpt: string;
             section: string;
             tags: string[];
             readingMinutes: number;
             /** @enum {string} */
             status: "draft" | "published";
+            revision: number;
+            hasUnpublishedChanges: boolean;
             /** Format: date-time */
             publishedAt?: string | null;
             /** Format: date-time */
@@ -290,6 +642,18 @@ export interface components {
         PostListResponseDto: {
             data: components["schemas"]["PostListDataDto"];
         };
+        ResolvePostReferencesDto: {
+            postIds: string[];
+        };
+        PublicPostReferenceDto: {
+            /** Format: uuid */
+            postId: string;
+            slug: string;
+            title: string;
+        };
+        PostReferencesResponseDto: {
+            data: components["schemas"]["PublicPostReferenceDto"][];
+        };
         UpdatePostDto: {
             /** @example A revised title */
             title?: string;
@@ -297,6 +661,10 @@ export interface components {
             slug?: string;
             /** @example Updated canonical Markdown. */
             content?: string;
+            /** @description Canonical serialized Lexical editor state. The server derives compatibility Markdown from it. */
+            document?: {
+                [key: string]: unknown;
+            };
             /** @description May be empty on a draft; must be non-empty when publishing. */
             excerpt?: string;
             /** @description May be empty on a draft; must be non-empty when publishing. */
@@ -310,6 +678,17 @@ export interface components {
             tags?: string[];
             /** @enum {string} */
             status?: "draft" | "published";
+        };
+        ForkWorkingCopyDto: {
+            title?: string;
+            slug?: string;
+            content?: string;
+            document?: {
+                [key: string]: unknown;
+            };
+            excerpt?: string;
+            section?: string;
+            tags?: string[];
         };
         PublicPostsQueryDto: {
             limit?: number;
@@ -365,12 +744,17 @@ export interface components {
              */
             tags: string[];
             /**
-             * @description Canonical owner-authored Markdown source.
+             * @description Compatibility Markdown derived from the RichDocument.
              * @example ## 先让内容找到位置
              *
              *     正文以 Markdown 保存。
              */
             content: string;
+            /** @description Canonical serialized Lexical editor state. */
+            document: {
+                [key: string]: unknown;
+            };
+            references: components["schemas"]["PublicPostReferenceDto"][];
         };
         PublicPostResponseDto: {
             data: components["schemas"]["PublicPostDetailDto"];
@@ -434,6 +818,130 @@ export interface components {
         PublicProfileResponseDto: {
             data: components["schemas"]["PublicProfileDto"];
         };
+        LinkCardDto: {
+            url: string;
+            title: string;
+            description?: string | null;
+            imageUrl?: string | null;
+            siteName?: string | null;
+        };
+        LinkCardResponseDto: {
+            data: components["schemas"]["LinkCardDto"];
+        };
+        MediaAssetDto: {
+            id: string;
+            originalName: string;
+            contentType: string;
+            /** @enum {string} */
+            kind: "image" | "video";
+            byteSize: number;
+            publicUrl: string;
+            /** @enum {string} */
+            status: "initiated" | "ready";
+            width?: number | null;
+            height?: number | null;
+            thumbhash?: string | null;
+            alt?: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            finalizedAt?: string | null;
+        };
+        InitiateMediaUploadDataDto: {
+            asset: components["schemas"]["MediaAssetDto"];
+            uploadUrl: string;
+            /** @description Append these fields to multipart/form-data before the file field. */
+            uploadFields: Record<string, never>;
+            /** @example 900 */
+            expiresInSeconds: number;
+        };
+        InitiateMediaUploadResponseDto: {
+            data: components["schemas"]["InitiateMediaUploadDataDto"];
+        };
+        MediaAssetResponseDto: {
+            data: components["schemas"]["MediaAssetDto"];
+        };
+        AiProviderProfileDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            providerType: "claude" | "openai-compatible";
+            baseUrl: string;
+            model: string;
+            apiKeyMasked: string;
+            /** @enum {string} */
+            source: "environment" | "owner";
+            readOnly: boolean;
+            /** Format: date-time */
+            createdAt: string | null;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
+        AiProviderProfilesResponseDto: {
+            data: components["schemas"]["AiProviderProfileDto"][];
+        };
+        AiProviderProfileResponseDto: {
+            data: components["schemas"]["AiProviderProfileDto"];
+        };
+        AiConnectionTestDataDto: {
+            ok: boolean;
+            latencyMs: number;
+        };
+        AiConnectionTestResponseDto: {
+            data: components["schemas"]["AiConnectionTestDataDto"];
+        };
+        AiMessageDto: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            role: "user" | "assistant";
+            content: string;
+            /** @enum {string} */
+            status: "complete" | "failed" | "cancelled";
+            /** Format: uuid */
+            runId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AiToolDecisionDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            runId: string;
+            toolCallId: string;
+            toolName: string;
+            payload: Record<string, never>;
+            /** @enum {string} */
+            decision: "pending" | "accepted" | "rejected";
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        AiSessionDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            postId: string;
+            title: string;
+            /** Format: uuid */
+            providerProfileId: string | null;
+            /** Format: uuid */
+            activeRunId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            messages: components["schemas"]["AiMessageDto"][];
+            toolDecisions: components["schemas"]["AiToolDecisionDto"][];
+        };
+        AiSessionsResponseDto: {
+            data: components["schemas"]["AiSessionDto"][];
+        };
+        AiSessionResponseDto: {
+            data: components["schemas"]["AiSessionDto"];
+        };
+        AiToolDecisionResponseDto: {
+            data: components["schemas"]["AiToolDecisionDto"];
+        };
     };
     responses: never;
     parameters: never;
@@ -443,6 +951,25 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    AuthController_status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerAuthStatusResponseDto"];
+                };
+            };
+        };
+    };
     AuthController_setup: {
         parameters: {
             query?: never;
@@ -537,6 +1064,7 @@ export interface operations {
     PostsController_list: {
         parameters: {
             query?: {
+                q?: string;
                 status?: "draft" | "published";
                 size?: number;
                 page?: number;
@@ -604,6 +1132,45 @@ export interface operations {
             };
         };
     };
+    PostsController_resolveReferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolvePostReferencesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostReferencesResponseDto"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
     PostsController_findById: {
         parameters: {
             query?: never;
@@ -644,7 +1211,9 @@ export interface operations {
     PostsController_update: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "If-Match": string;
+            };
             path: {
                 id: string;
             };
@@ -670,6 +1239,260 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_publish: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostResponseDto"];
+                };
+            };
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_unpublish: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_discardWorkingCopy: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostResponseDto"];
+                };
+            };
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    PostsController_forkWorkingCopy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ForkWorkingCopyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PostResponseDto"];
                 };
             };
             401: {
@@ -853,6 +1676,340 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApiErrorResponseDto"];
+                };
+            };
+        };
+    };
+    LinkCardController_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkCardResponseDto"];
+                };
+            };
+        };
+    };
+    MediaController_initiate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InitiateMediaUploadResponseDto"];
+                };
+            };
+        };
+    };
+    MediaController_finalize: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetResponseDto"];
+                };
+            };
+        };
+    };
+    MediaController_find: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MediaAssetResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_listProviders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProviderProfilesResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_createProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProviderProfileResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_deleteProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AiController_updateProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProviderProfileResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_testProvider: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiConnectionTestResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_listSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSessionsResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_createSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSessionResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_findSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSessionResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_deleteSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AiController_renameSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSessionResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_startRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AiController_cancelRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AiController_decideToolCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiToolDecisionResponseDto"];
+                };
+            };
+        };
+    };
+    AiController_recordToolCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiToolDecisionResponseDto"];
                 };
             };
         };

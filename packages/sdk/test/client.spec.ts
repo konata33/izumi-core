@@ -3,23 +3,53 @@ import { describe, expect, it, vi } from 'vitest';
 import { createIzumiClient, createIzumiPublicClient } from '../src/index.js';
 
 describe('createIzumiClient', () => {
+  it('reads whether the singleton owner has been initialized', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const request = new Request(input, init);
+      expect(request.method).toBe('GET');
+      expect(request.url).toBe('https://core.example.test/api/v1/auth/status');
+      return new Response(
+        JSON.stringify({ data: { initialized: true, username: 'owner' } }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+    });
+    const client = createIzumiClient({
+      baseUrl: 'https://core.example.test',
+      fetch,
+    });
+
+    await expect(client.getOwnerAuthStatus()).resolves.toEqual({
+      initialized: true,
+      username: 'owner',
+    });
+  });
+
   it('unwraps the documented authentication envelope', async () => {
-    const fetch = vi.fn<typeof globalThis.fetch>(
-      async () =>
-        new Response(
-          JSON.stringify({
-            data: {
-              accessToken: 'token-123',
-              tokenType: 'Bearer',
-              expiresIn: 604800,
-            },
-          }),
-          {
-            status: 200,
-            headers: { 'content-type': 'application/json' },
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const request = new Request(input, init);
+      const body = await request.json();
+      expect(body).toEqual({
+        username: 'owner',
+        password: 'correct-horse-battery-staple',
+      });
+      expect(body).not.toHaveProperty('email');
+      return new Response(
+        JSON.stringify({
+          data: {
+            accessToken: 'token-123',
+            tokenType: 'Bearer',
+            expiresIn: 604800,
           },
-        ),
-    );
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      );
+    });
     const client = createIzumiClient({
       baseUrl: 'https://core.example.test/',
       fetch,
@@ -27,7 +57,7 @@ describe('createIzumiClient', () => {
 
     await expect(
       client.loginOwner({
-        email: 'owner@example.com',
+        username: 'owner',
         password: 'correct-horse-battery-staple',
       }),
     ).resolves.toMatchObject({ accessToken: 'token-123' });
@@ -38,6 +68,10 @@ describe('createIzumiClient', () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
       const request = new Request(input, init);
       expect(request.headers.get('x-izumi-setup-token')).toBe('bootstrap-token');
+      expect(await request.json()).toEqual({
+        username: 'owner',
+        password: 'correct-horse-battery-staple',
+      });
       return new Response(
         JSON.stringify({
           data: {
@@ -59,7 +93,7 @@ describe('createIzumiClient', () => {
 
     await client.setupOwner(
       {
-        email: 'owner@example.com',
+        username: 'owner',
         password: 'correct-horse-battery-staple',
       },
       'bootstrap-token',
@@ -69,9 +103,40 @@ describe('createIzumiClient', () => {
   it('sends the owner token when saving an existing post', async () => {
     const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
       const request = new Request(input, init);
+      if (request.method === 'GET') {
+        expect(request.headers.get('authorization')).toBe('Bearer owner-token');
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: 'post-123',
+              title: 'Existing title',
+              slug: 'first-post',
+              content: 'Markdown',
+              excerpt: '',
+              section: '',
+              tags: [],
+              readingMinutes: 1,
+              status: 'draft',
+              revision: 4,
+              hasUnpublishedChanges: true,
+              publishedAt: null,
+              createdAt: '2026-07-21T00:00:00.000Z',
+              updatedAt: '2026-07-21T00:00:00.000Z',
+            },
+          }),
+          {
+            status: 200,
+            headers: {
+              'content-type': 'application/json',
+              etag: 'W/"4"',
+            },
+          },
+        );
+      }
       expect(request.method).toBe('PATCH');
       expect(request.url).toBe('https://core.example.test/api/v1/posts/post-123');
       expect(request.headers.get('authorization')).toBe('Bearer owner-token');
+      expect(request.headers.get('if-match')).toBe('W/"4"');
       expect(await request.json()).toEqual({ title: 'Revised title' });
       return new Response(
         JSON.stringify({
@@ -108,6 +173,139 @@ describe('createIzumiClient', () => {
       id: 'post-123',
       title: 'Revised title',
     });
+  });
+
+  it('preserves the loaded ETag across the versioned owner post path', async () => {
+    let revision = 4;
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const request = new Request(input, init);
+      if (request.method === 'GET') {
+        return new Response(
+          JSON.stringify({
+            data: {
+              id: 'post-123',
+              title: 'Original title',
+              slug: 'first-post',
+              content: 'Markdown',
+              excerpt: '',
+              section: '',
+              tags: [],
+              readingMinutes: 1,
+              status: 'draft',
+              revision,
+              hasUnpublishedChanges: true,
+              publishedAt: null,
+              createdAt: '2026-07-21T00:00:00.000Z',
+              updatedAt: '2026-07-21T00:00:00.000Z',
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'content-type': 'application/json', etag: `W/"${revision}"` },
+          },
+        );
+      }
+
+      expect(request.headers.get('if-match')).toBe('W/"4"');
+      revision = 5;
+      return new Response(
+        JSON.stringify({
+          data: {
+            id: 'post-123',
+            title: 'Revised title',
+            slug: 'first-post',
+            content: 'Markdown',
+            excerpt: '',
+            section: '',
+            tags: [],
+            readingMinutes: 1,
+            status: 'draft',
+            revision,
+            hasUnpublishedChanges: true,
+            publishedAt: null,
+            createdAt: '2026-07-21T00:00:00.000Z',
+            updatedAt: '2026-07-21T00:00:00.000Z',
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json', etag: 'W/"5"' },
+        },
+      );
+    });
+    const client = createIzumiClient({
+      baseUrl: 'https://core.example.test',
+      fetch,
+      getAccessToken: () => 'owner-token',
+    });
+
+    const loaded = await client.getPostVersioned('post-123');
+    await expect(
+      client.updatePostVersioned(
+        loaded.post.id,
+        { title: 'Revised title' },
+        loaded.etag,
+      ),
+    ).resolves.toMatchObject({
+      post: { revision: 5, title: 'Revised title' },
+      etag: 'W/"5"',
+    });
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps latest-revision lookup explicit for legacy updates', async () => {
+    const methods: string[] = [];
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const request = new Request(input, init);
+      methods.push(request.method);
+      if (request.method === 'GET') {
+        return new Response(JSON.stringify({ data: { id: 'post-123' } }), {
+          status: 200,
+          headers: { 'content-type': 'application/json', etag: 'W/"9"' },
+        });
+      }
+      expect(request.headers.get('if-match')).toBe('W/"9"');
+      return new Response(JSON.stringify({ data: { id: 'post-123' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json', etag: 'W/"10"' },
+      });
+    });
+    const client = createIzumiClient({
+      baseUrl: 'https://core.example.test',
+      fetch,
+    });
+
+    await expect(
+      client.updatePostLegacy('post-123', { title: 'Legacy update' }),
+    ).resolves.toMatchObject({ id: 'post-123' });
+    expect(methods).toEqual(['GET', 'PATCH']);
+  });
+
+  it('resolves live post references in one authenticated request', async () => {
+    const fetch = vi.fn<typeof globalThis.fetch>(async (input, init) => {
+      const request = new Request(input, init);
+      expect(request.method).toBe('POST');
+      expect(request.url).toBe(
+        'https://core.example.test/api/v1/posts/references/resolve',
+      );
+      expect(request.headers.get('authorization')).toBe('Bearer owner-token');
+      expect(await request.json()).toEqual({ postIds: ['post-1', 'post-2'] });
+      return new Response(
+        JSON.stringify({
+          data: [{ postId: 'post-1', slug: 'first-post', title: 'First post' }],
+        }),
+        { status: 200, headers: { 'content-type': 'application/json' } },
+      );
+    });
+    const client = createIzumiClient({
+      baseUrl: 'https://core.example.test',
+      fetch,
+      getAccessToken: () => 'owner-token',
+    });
+
+    await expect(
+      client.resolvePostReferences({ postIds: ['post-1', 'post-2'] }),
+    ).resolves.toEqual([{ postId: 'post-1', slug: 'first-post', title: 'First post' }]);
   });
 
   it('sends the complete profile and owner token when replacing the profile', async () => {

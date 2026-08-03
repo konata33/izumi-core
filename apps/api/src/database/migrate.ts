@@ -7,6 +7,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
 import { loadWorkspaceEnvironment } from '../config/load-environment.js';
+import { runPostContentBackfill } from '../posts/content-backfill.js';
 
 function defaultMigrationsFolder(): string {
   const currentDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -26,6 +27,7 @@ export async function runMigrations(options: {
     await migrate(drizzle(pool), {
       migrationsFolder: options.migrationsFolder ?? defaultMigrationsFolder(),
     });
+    await runPostContentBackfill(pool);
   } finally {
     await pool.end();
   }

@@ -4,11 +4,15 @@ import type { components, paths } from './openapi.js';
 
 export type OwnerSetupInput = components['schemas']['OwnerSetupDto'];
 export type OwnerLoginInput = components['schemas']['OwnerLoginDto'];
+export type OwnerAuthStatus = components['schemas']['OwnerAuthStatusDto'];
 export type AuthToken = components['schemas']['AuthTokenDto'];
 export type CreatePostInput = components['schemas']['CreatePostDto'];
 export type UpdatePostInput = components['schemas']['UpdatePostDto'];
 export type Post = components['schemas']['PostDto'];
 export type PostStatus = 'draft' | 'published';
+export type ResolvePostReferencesInput =
+  components['schemas']['ResolvePostReferencesDto'];
+export type PublicPostReference = components['schemas']['PublicPostReferenceDto'];
 export type PublicPostSummary = components['schemas']['PublicPostSummaryDto'];
 export type PublicPost = components['schemas']['PublicPostDetailDto'];
 export type ReplaceProfileInput = components['schemas']['ReplaceProfileDto'];
@@ -20,6 +24,11 @@ export type PostList = {
   page: number;
   size: number;
   total: number;
+};
+
+export type VersionedPost = {
+  post: Post;
+  etag: string;
 };
 
 export type IzumiClientOptions = {
@@ -106,6 +115,22 @@ async function unwrapHttpEnvelope<T>(response: Response): Promise<T> {
   return envelope.data as T;
 }
 
+async function unwrapVersionedPost(response: {
+  data?: unknown;
+  error?: unknown;
+  response: Response;
+}): Promise<VersionedPost> {
+  const post = await unwrap<Post>(response);
+  const etag = response.response.headers.get('etag');
+  if (!etag) {
+    throw new IzumiRequestError(
+      'Izumi Core did not return the current post ETag',
+      response.response.status,
+    );
+  }
+  return { post, etag };
+}
+
 export function createIzumiClient(options: IzumiClientOptions) {
   const client = createOpenApiClient<paths>({
     baseUrl: options.baseUrl.replace(/\/+$/, ''),
@@ -117,7 +142,44 @@ export function createIzumiClient(options: IzumiClientOptions) {
     return token ? { authorization: `Bearer ${token}` } : {};
   }
 
+  async function resolvePostEtag(
+    id: string,
+    headers: Record<string, string>,
+    etag?: string,
+  ): Promise<string> {
+    if (etag) return etag;
+
+    // Preserve the pre-ETag SDK call shape for existing consumers. New
+    // editors should pass the ETag they originally loaded; legacy callers
+    // first read the latest revision and retain their prior last-write-wins
+    // behavior without bypassing the server's concurrency contract.
+    const current = await client.GET('/api/v1/posts/{id}', {
+      headers,
+      params: { path: { id } },
+    });
+    return (await unwrapVersionedPost(current)).etag;
+  }
+
+  async function patchPost(
+    id: string,
+    input: UpdatePostInput,
+    etag: string,
+    headers: Record<string, string>,
+  ) {
+    return client.PATCH('/api/v1/posts/{id}', {
+      body: input,
+      headers,
+      params: {
+        header: { 'If-Match': etag },
+        path: { id },
+      },
+    });
+  }
+
   return {
+    getOwnerAuthStatus: async (): Promise<OwnerAuthStatus> =>
+      unwrap<OwnerAuthStatus>(await client.GET('/api/v1/auth/status')),
+
     setupOwner: async (
       input: OwnerSetupInput,
       setupToken: string,
@@ -146,6 +208,14 @@ export function createIzumiClient(options: IzumiClientOptions) {
         }),
       ),
 
+    createPostVersioned: async (input: CreatePostInput): Promise<VersionedPost> =>
+      unwrapVersionedPost(
+        await client.POST('/api/v1/posts', {
+          body: input,
+          headers: await authorizationHeaders(),
+        }),
+      ),
+
     getPost: async (id: string): Promise<Post> =>
       unwrap<Post>(
         await client.GET('/api/v1/posts/{id}', {
@@ -154,17 +224,42 @@ export function createIzumiClient(options: IzumiClientOptions) {
         }),
       ),
 
-    updatePost: async (id: string, input: UpdatePostInput): Promise<Post> =>
-      unwrap<Post>(
-        await client.PATCH('/api/v1/posts/{id}', {
-          body: input,
+    getPostVersioned: async (id: string): Promise<VersionedPost> =>
+      unwrapVersionedPost(
+        await client.GET('/api/v1/posts/{id}', {
           headers: await authorizationHeaders(),
           params: { path: { id } },
         }),
       ),
 
+    updatePostVersioned: async (
+      id: string,
+      input: UpdatePostInput,
+      etag: string,
+    ): Promise<VersionedPost> =>
+      unwrapVersionedPost(
+        await patchPost(id, input, etag, await authorizationHeaders()),
+      ),
+
+    updatePostLegacy: async (id: string, input: UpdatePostInput): Promise<Post> => {
+      const headers = await authorizationHeaders();
+      const etag = await resolvePostEtag(id, headers);
+      return unwrap<Post>(await patchPost(id, input, etag, headers));
+    },
+
+    updatePost: async (
+      id: string,
+      input: UpdatePostInput,
+      etag?: string,
+    ): Promise<Post> => {
+      const headers = await authorizationHeaders();
+      const ifMatch = await resolvePostEtag(id, headers, etag);
+      return unwrap<Post>(await patchPost(id, input, ifMatch, headers));
+    },
+
     listPosts: async (options?: {
       page?: number;
+      q?: string;
       size?: number;
       status?: PostStatus;
     }): Promise<PostList> =>
@@ -175,12 +270,25 @@ export function createIzumiClient(options: IzumiClientOptions) {
         }),
       ),
 
+    resolvePostReferences: async (
+      input: ResolvePostReferencesInput,
+    ): Promise<PublicPostReference[]> =>
+      unwrap<PublicPostReference[]>(
+        await client.POST('/api/v1/posts/references/resolve', {
+          body: input,
+          headers: await authorizationHeaders(),
+        }),
+      ),
+
     getOwnerProfile: async (): Promise<OwnerProfile> =>
       unwrap<OwnerProfile>(
         await client.GET('/api/v1/owner/profile', {
           headers: await authorizationHeaders(),
         }),
       ),
+
+    getPublicProfile: async (): Promise<PublicProfile> =>
+      unwrap<PublicProfile>(await client.GET('/api/v1/public/profile')),
 
     replaceProfile: async (input: ReplaceProfileInput): Promise<OwnerProfile> =>
       unwrap<OwnerProfile>(
