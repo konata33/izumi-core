@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   check,
   index,
   integer,
@@ -11,6 +12,29 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { owners, posts } from '../database/schema.js';
+
+export const storageSettings = pgTable(
+  'storage_settings',
+  {
+    ownerId: text('owner_id')
+      .primaryKey()
+      .references(() => owners.id, { onDelete: 'cascade' }),
+    mode: text('mode').notNull().default('local'),
+    endpoint: text('endpoint'),
+    region: text('region'),
+    bucket: text('bucket'),
+    accessKeyId: text('access_key_id'),
+    encryptedSecretAccessKey: text('encrypted_secret_access_key'),
+    publicBaseUrl: text('public_base_url'),
+    forcePathStyle: boolean('force_path_style').notNull().default(false),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .default(sql`now()`),
+  },
+  (table) => [
+    check('storage_settings_mode_check', sql`${table.mode} IN ('local', 's3')`),
+  ],
+);
 
 export const mediaAssets = pgTable(
   'media_assets',

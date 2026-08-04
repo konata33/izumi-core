@@ -1,241 +1,239 @@
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { encryptSecret } from '../../src/common/secret-crypto.js';
 import type { AppConfig } from '../../src/config/app-config.js';
+import { UrlSafetyPolicy } from '../../src/link-cards/url-safety.js';
+import { StorageMode } from '../../src/media/media.dto.js';
 import { MediaService } from '../../src/media/media.service.js';
-import { S3Signer } from '../../src/media/s3-signer.js';
 
-const now = new Date('2026-07-30T00:00:00.000Z');
-const asset = {
-  id: 'asset-1',
-  ownerId: 'owner-1',
-  objectKey: 'owners/owner-1/asset-1.png',
-  originalName: 'article.png',
-  contentType: 'image/png',
-  kind: 'image',
-  byteSize: 28,
-  status: 'initiated',
-  publicUrl: 'https://assets.example.test/owners/owner-1/asset-1.png',
-  width: null,
-  height: null,
-  thumbhash: null,
-  alt: null,
-  finalizedAt: null,
-  createdAt: now,
-};
+const createdDirectories: string[] = [];
 
-const config = {
-  mediaStorage: {
-    endpoint: 'https://s3.example.test',
-    region: 'auto',
-    bucket: 'izumi',
-    accessKeyId: 'test',
-    secretAccessKey: 'test-secret',
-    publicBaseUrl: 'https://assets.example.test',
-    forcePathStyle: true,
-    imageMaxBytes: 20 * 1024 * 1024,
-    videoMaxBytes: 500 * 1024 * 1024,
-  },
-} as AppConfig;
+async function temporaryDirectory(): Promise<string> {
+  const directory = await mkdtemp(path.join(os.tmpdir(), 'izumi-media-unit-'));
+  createdDirectories.push(directory);
+  return directory;
+}
 
-function selection(rows: unknown[]) {
+function config(localDirectory: string): AppConfig {
   return {
-    from: () => ({
-      where: () => ({
-        limit: async () => rows,
+    nodeEnv: 'test',
+    port: 3001,
+    adminPort: 5173,
+    databaseUrl: 'postgres://unused',
+    redisUrl: 'redis://unused',
+    jwtSecret: 'test-secret-with-more-than-thirty-two-characters',
+    jwtExpiresInSeconds: 3600,
+    corsOrigins: [],
+    corePublicUrl: 'https://core.example.test',
+    mediaLocalDirectory: localDirectory,
+    mediaImageMaxBytes: 1024,
+    mediaVideoMaxBytes: 2048,
+  };
+}
+
+function localDatabase(inserted?: (values: Record<string, unknown>) => void) {
+  return {
+    select: () => ({
+      from: () => ({
+        where: () => ({
+          orderBy: () => ({ limit: async () => [] }),
+        }),
+      }),
+    }),
+    insert: () => ({
+      values: (values: Record<string, unknown>) => ({
+        returning: async () => {
+          inserted?.(values);
+          const now = values.createdAt as Date;
+          return [{ ...values, createdAt: now, finalizedAt: now }];
+        },
       }),
     }),
   };
 }
 
-afterEach(() => {
-  vi.unstubAllGlobals();
+afterEach(async () => {
+  await Promise.all(
+    createdDirectories
+      .splice(0)
+      .map((directory) => rm(directory, { recursive: true, force: true })),
+  );
   vi.restoreAllMocks();
 });
 
-describe('MediaService verification and cleanup', () => {
-  it('rejects a forged MIME when object magic bytes do not match', async () => {
-    const update = vi.fn();
-    const database = {
-      select: () => selection([asset]),
-      update,
-    };
-    const fetchMock = vi
-      .fn<typeof fetch>()
-      .mockResolvedValueOnce(
-        new Response(null, {
-          headers: {
-            'Content-Length': String(asset.byteSize),
-            'Content-Type': asset.contentType,
-          },
-        }),
-      )
-      .mockResolvedValueOnce(
-        new Response('<html>forged image payload</html>', { status: 206 }),
-      );
-    vi.stubGlobal('fetch', fetchMock);
-    const promote = vi.spyOn(S3Signer.prototype, 'promote');
+describe('MediaService Core upload', () => {
+  it('stores a valid video locally and returns a ready canonical asset', async () => {
+    const directory = await temporaryDirectory();
+    const source = path.join(directory, 'request-upload');
+    const content = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
+    await writeFile(source, content);
+    let inserted: Record<string, unknown> | undefined;
+    const service = new MediaService(
+      localDatabase((values) => {
+        inserted = values;
+      }) as never,
+      config(path.join(directory, 'stored')),
+      new UrlSafetyPolicy(),
+    );
 
-    const service = new MediaService(database as never, config);
-    await expect(service.finalize('owner-1', asset.id, {})).rejects.toMatchObject({
-      code: 'MEDIA_SIGNATURE_MISMATCH',
-    });
-    expect(update).not.toHaveBeenCalled();
-    expect(promote).not.toHaveBeenCalled();
-  });
-
-  it('keeps a validated upload retryable when public promotion fails', async () => {
-    const videoAsset = {
-      ...asset,
-      objectKey: 'owners/owner-1/asset-1.webm',
+    const asset = await service.upload('owner-1', {
+      filePath: source,
+      fieldName: 'file',
+      originalName: 'clip.webm',
       contentType: 'video/webm',
-      kind: 'video',
-      byteSize: 4,
-    };
-    const update = vi.fn();
-    const database = {
-      select: () => selection([videoAsset]),
-      update,
-    };
-    vi.spyOn(S3Signer.prototype, 'presign').mockResolvedValue('https://signed.test');
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<typeof fetch>(async (_url, init) =>
-        init?.method === 'HEAD'
-          ? new Response(null, {
-              headers: {
-                'Content-Length': String(videoAsset.byteSize),
-                'Content-Type': videoAsset.contentType,
-              },
-            })
-          : new Response(Uint8Array.from([0x1a, 0x45, 0xdf, 0xa3]), {
-              status: 206,
-            }),
+      alt: 'A short clip',
+    });
+
+    expect(asset).toMatchObject({
+      status: 'ready',
+      publicUrl: expect.stringMatching(
+        /^https:\/\/core\.example\.test\/uploads\/owners\/owner-1\/.+\.webm$/u,
       ),
-    );
-    vi.spyOn(S3Signer.prototype, 'promote').mockRejectedValue(
-      new Error('temporary S3 outage'),
-    );
-    const discard = vi.spyOn(S3Signer.prototype, 'discard');
-
-    const service = new MediaService(database as never, config);
-    await expect(service.finalize('owner-1', asset.id, {})).rejects.toMatchObject({
-      code: 'MEDIA_PROMOTION_FAILED',
+      byteSize: content.byteLength,
+      alt: 'A short clip',
     });
-    expect(update).not.toHaveBeenCalled();
-    expect(discard).not.toHaveBeenCalled();
+    expect(inserted).toMatchObject({ status: 'ready', kind: 'video' });
+    const storedPath = path.join(
+      directory,
+      'stored',
+      ...(inserted!.objectKey as string).split('/'),
+    );
+    await expect(readFile(storedPath)).resolves.toEqual(content);
   });
 
-  it('returns the canonical ready asset when a concurrent finalize removes quarantine', async () => {
-    const current: Record<string, unknown> = {
-      ...asset,
-      objectKey: 'owners/owner-1/asset-1.webm',
-      contentType: 'video/webm',
-      kind: 'video',
-      byteSize: 4,
+  it('rejects forged MIME before creating a database row or stored object', async () => {
+    const directory = await temporaryDirectory();
+    const source = path.join(directory, 'forged');
+    await writeFile(source, '<html>not a video</html>');
+    const database = localDatabase();
+    const service = new MediaService(
+      database as never,
+      config(path.join(directory, 'stored')),
+      new UrlSafetyPolicy(),
+    );
+
+    await expect(
+      service.upload('owner-1', {
+        filePath: source,
+        fieldName: 'file',
+        originalName: 'forged.webm',
+        contentType: 'video/webm',
+      }),
+    ).rejects.toMatchObject({ code: 'MEDIA_SIGNATURE_MISMATCH' });
+  });
+
+  it('removes the local object when the media row cannot be committed', async () => {
+    const directory = await temporaryDirectory();
+    const storageDirectory = path.join(directory, 'stored');
+    const source = path.join(directory, 'request-upload');
+    await writeFile(source, Buffer.from([0x1a, 0x45, 0xdf, 0xa3]));
+    const database = localDatabase(() => {
+      throw new Error('database unavailable');
+    });
+    const service = new MediaService(
+      database as never,
+      config(storageDirectory),
+      new UrlSafetyPolicy(),
+    );
+
+    await expect(
+      service.upload('owner-1', {
+        filePath: source,
+        fieldName: 'file',
+        originalName: 'clip.webm',
+        contentType: 'video/webm',
+      }),
+    ).rejects.toMatchObject({ code: 'MEDIA_STORAGE_FAILED' });
+    await expect(
+      readdir(path.join(storageDirectory, 'owners/owner-1')),
+    ).resolves.toEqual([]);
+  });
+
+  it('does not update S3 fields when the saved secret cannot be decrypted', async () => {
+    const directory = await temporaryDirectory();
+    const rightKey = Buffer.alloc(32, 3).toString('base64');
+    const wrongKey = Buffer.alloc(32, 4).toString('base64');
+    const settings = {
+      ownerId: 'owner-1',
+      mode: 's3',
+      endpoint: 'https://s3.example.test',
+      region: 'auto',
+      bucket: 'izumi',
+      accessKeyId: 'access',
+      encryptedSecretAccessKey: encryptSecret('saved-secret', rightKey),
+      publicBaseUrl: 'https://assets.example.test',
+      forcePathStyle: false,
+      updatedAt: new Date(),
     };
+    const insert = vi.fn();
     const database = {
-      select: () => selection([current]),
-      update: vi.fn(() => ({
-        set: (values: Record<string, unknown>) => ({
+      select: () => ({
+        from: () => ({
           where: () => ({
-            returning: async () => {
-              if (current.status !== 'initiated') return [];
-              Object.assign(current, values);
-              return [{ ...current }];
-            },
+            orderBy: () => ({ limit: async () => [settings] }),
           }),
         }),
-      })),
-    };
-    vi.spyOn(S3Signer.prototype, 'presign').mockResolvedValue('https://signed.test');
-    let releaseSlowHead = () => undefined;
-    const slowHeadReleased = new Promise<void>((resolve) => {
-      releaseSlowHead = resolve;
-    });
-    let markSlowHeadStarted = () => undefined;
-    const slowHeadStarted = new Promise<void>((resolve) => {
-      markSlowHeadStarted = resolve;
-    });
-    let headCount = 0;
-    vi.stubGlobal(
-      'fetch',
-      vi.fn<typeof fetch>(async (_url, init) => {
-        if (init?.method === 'HEAD') {
-          headCount += 1;
-          if (headCount === 1) {
-            markSlowHeadStarted();
-            await slowHeadReleased;
-            return new Response(null, { status: 404 });
-          }
-          return new Response(null, {
-            headers: {
-              'Content-Length': '4',
-              'Content-Type': 'video/webm',
-            },
-          });
-        }
-        return new Response(Uint8Array.from([0x1a, 0x45, 0xdf, 0xa3]), {
-          status: 206,
-        });
       }),
+      insert,
+    };
+    const appConfig = {
+      ...config(path.join(directory, 'stored')),
+      credentialsEncryptionKey: wrongKey,
+    };
+    const service = new MediaService(
+      database as never,
+      appConfig,
+      new UrlSafetyPolicy(),
     );
-    const promote = vi.spyOn(S3Signer.prototype, 'promote').mockResolvedValue();
-    const discardQuarantine = vi
-      .spyOn(S3Signer.prototype, 'discardQuarantine')
-      .mockResolvedValue();
-    const discard = vi.spyOn(S3Signer.prototype, 'discard');
 
-    const service = new MediaService(database as never, config);
-    const slowFinalize = service.finalize('owner-1', asset.id, {});
-    await slowHeadStarted;
-    const fastFinalize = await service.finalize('owner-1', asset.id, {});
-    releaseSlowHead();
-    const finalized = [await slowFinalize, fastFinalize];
-
-    expect(finalized.map(({ status }) => status)).toEqual(['ready', 'ready']);
-    expect(finalized[0]).toEqual(finalized[1]);
-    expect(promote).toHaveBeenCalledTimes(1);
-    expect(discardQuarantine).toHaveBeenCalledTimes(2);
-    expect(discard).not.toHaveBeenCalled();
+    await expect(
+      service.updateStorageSettings('owner-1', {
+        mode: StorageMode.S3,
+        bucket: 'new-bucket',
+      }),
+    ).rejects.toMatchObject({ code: 'STORAGE_CREDENTIALS_INVALID' });
+    expect(insert).not.toHaveBeenCalled();
   });
 
-  it('deletes only stale initiated objects after S3 deletion succeeds', async () => {
-    const stale = {
-      ...asset,
-      createdAt: new Date('2026-07-28T00:00:00.000Z'),
-    };
-    const returning = vi.fn(async () => [{ id: stale.id }]);
-    const deleteWhere = vi.fn(() => ({ returning }));
+  it('rejects private S3 endpoints in production before saving settings', async () => {
+    const directory = await temporaryDirectory();
+    const insert = vi.fn();
     const database = {
-      select: () => selection([stale]),
-      delete: vi.fn(() => ({ where: deleteWhere })),
+      select: () => ({
+        from: () => ({
+          where: () => ({
+            orderBy: () => ({ limit: async () => [] }),
+          }),
+        }),
+      }),
+      insert,
     };
-    const discard = vi.spyOn(S3Signer.prototype, 'discard').mockResolvedValue();
-
-    const service = new MediaService(database as never, config);
-    await expect(service.cleanupOrphans(now)).resolves.toBe(1);
-    expect(discard).toHaveBeenCalledWith(stale.objectKey);
-    expect(deleteWhere).toHaveBeenCalledTimes(1);
-  });
-
-  it('leaves failed orphan deletions retryable and continues the cleanup batch', async () => {
-    const candidates = [
-      { ...asset, id: 'failed', objectKey: 'owners/owner-1/failed.png' },
-      { ...asset, id: 'removed', objectKey: 'owners/owner-1/removed.png' },
-    ];
-    const returning = vi.fn(async () => [{ id: 'removed' }]);
-    const database = {
-      select: () => selection(candidates),
-      delete: vi.fn(() => ({
-        where: () => ({ returning }),
-      })),
+    const appConfig: AppConfig = {
+      ...config(path.join(directory, 'stored')),
+      nodeEnv: 'production',
+      credentialsEncryptionKey: Buffer.alloc(32, 5).toString('base64'),
     };
-    vi.spyOn(S3Signer.prototype, 'discard')
-      .mockRejectedValueOnce(new Error('temporary S3 outage'))
-      .mockResolvedValueOnce();
+    const urlSafety = {
+      assertSafe: vi.fn().mockRejectedValue(new Error('private target')),
+    };
+    const service = new MediaService(database as never, appConfig, urlSafety as never);
 
-    const service = new MediaService(database as never, config);
-    await expect(service.cleanupOrphans(now)).resolves.toBe(1);
-    expect(database.delete).toHaveBeenCalledTimes(1);
+    await expect(
+      service.updateStorageSettings('owner-1', {
+        mode: StorageMode.S3,
+        endpoint: 'https://127.0.0.1',
+        region: 'auto',
+        bucket: 'izumi',
+        accessKeyId: 'access',
+        secretAccessKey: 'secret',
+        publicBaseUrl: 'https://assets.example.test',
+      }),
+    ).rejects.toMatchObject({ code: 'STORAGE_URL_UNSAFE' });
+    expect(urlSafety.assertSafe).toHaveBeenCalledWith('https://127.0.0.1');
+    expect(insert).not.toHaveBeenCalled();
   });
 });

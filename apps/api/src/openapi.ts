@@ -13,8 +13,11 @@ async function generate(): Promise<void> {
     redisUrl: 'redis://127.0.0.1:6389',
     jwtSecret: 'openapi-generation-secret-that-is-not-used-at-runtime',
     jwtExpiresInSeconds: 604_800,
-    ownerSetupToken: 'openapi-generation-token-that-is-not-used-at-runtime',
     corsOrigins: [],
+    corePublicUrl: 'http://localhost:3001',
+    mediaLocalDirectory: '/tmp/izumi-openapi-media',
+    mediaImageMaxBytes: 20 * 1024 * 1024,
+    mediaVideoMaxBytes: 500 * 1024 * 1024,
   });
   const document = createOpenApiDocument(app);
   const output = path.resolve(

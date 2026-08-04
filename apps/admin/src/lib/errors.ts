@@ -30,8 +30,6 @@ export function messageForError(error: unknown): string {
       return '用户名或密码不正确。';
     case 'OWNER_ALREADY_CONFIGURED':
       return '管理员已设置，请登录。';
-    case 'SETUP_TOKEN_INVALID':
-      return '初始化令牌无效。请重新复制后再试。';
     case 'POST_PUBLISHING_INCOMPLETE': {
       const fields = details.fields?.map(fieldName).join('、');
       return fields

@@ -9,7 +9,7 @@ const baseEnvironment = {
   REDIS_URL: 'redis://127.0.0.1:6389',
   JWT_SECRET: 'test-secret-with-more-than-thirty-two-characters',
   JWT_EXPIRES_IN: '2h',
-  OWNER_SETUP_TOKEN: 'test-setup-token-with-more-than-thirty-two-characters',
+  CREDENTIALS_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString('base64'),
 };
 
 describe('loadConfig', () => {
@@ -55,45 +55,46 @@ describe('loadConfig', () => {
     );
   });
 
-  it('loads complete optional media and AI configuration groups', () => {
+  it('loads media infrastructure, AI defaults, and the shared encryption key', () => {
     const encryptionKey = Buffer.alloc(32, 7).toString('base64');
     const config = loadConfig({
       ...baseEnvironment,
-      S3_ENDPOINT: 'http://127.0.0.1:9000',
-      S3_REGION: 'us-east-1',
-      S3_BUCKET: 'izumi-media',
-      S3_ACCESS_KEY_ID: 'izumi',
-      S3_SECRET_ACCESS_KEY: 'secret',
-      S3_PUBLIC_BASE_URL: 'https://assets.example.com/',
-      S3_FORCE_PATH_STYLE: 'true',
+      CORE_PUBLIC_URL: 'https://core.example.com/',
+      MEDIA_LOCAL_DIR: './var/media',
       AI_PROVIDER_TYPE: 'openai-compatible',
       AI_BASE_URL: 'https://api.example.com/v1/',
       AI_MODEL: 'writer',
       AI_API_KEY: 'provider-secret',
-      AI_CREDENTIALS_ENCRYPTION_KEY: encryptionKey,
+      CREDENTIALS_ENCRYPTION_KEY: encryptionKey,
     });
 
-    expect(config.mediaStorage).toMatchObject({
-      publicBaseUrl: 'https://assets.example.com',
-      forcePathStyle: true,
-    });
+    expect(config.corePublicUrl).toBe('https://core.example.com');
+    expect(config.mediaLocalDirectory).toBe(`${process.cwd()}/var/media`);
     expect(config.defaultAiProvider).toMatchObject({
       providerType: 'openai-compatible',
       baseUrl: 'https://api.example.com/v1',
       model: 'writer',
     });
     expect(config.aiCredentialsEncryptionKey).toBe(encryptionKey);
+    expect(config.credentialsEncryptionKey).toBe(encryptionKey);
   });
 
-  it('rejects partial optional service configuration and invalid encryption keys', () => {
-    expect(() =>
-      loadConfig({ ...baseEnvironment, S3_ENDPOINT: 'http://127.0.0.1:9000' }),
-    ).toThrow('S3 storage');
+  it('rejects invalid encryption keys and production without a public Core URL', () => {
     expect(() =>
       loadConfig({
         ...baseEnvironment,
-        AI_CREDENTIALS_ENCRYPTION_KEY: Buffer.alloc(12).toString('base64'),
+        CREDENTIALS_ENCRYPTION_KEY: Buffer.alloc(12).toString('base64'),
       }),
-    ).toThrow('AI_CREDENTIALS_ENCRYPTION_KEY');
+    ).toThrow('CREDENTIALS_ENCRYPTION_KEY');
+    expect(() => loadConfig({ ...baseEnvironment, NODE_ENV: 'production' })).toThrow(
+      'CORE_PUBLIC_URL',
+    );
+    expect(() =>
+      loadConfig({
+        ...baseEnvironment,
+        NODE_ENV: 'production',
+        CORE_PUBLIC_URL: 'http://core.example.com',
+      }),
+    ).toThrow('HTTPS');
   });
 });

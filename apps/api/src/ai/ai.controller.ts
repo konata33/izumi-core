@@ -17,6 +17,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiOkResponse,
@@ -28,8 +29,6 @@ import type { FastifyReply } from 'fastify';
 
 import { CurrentOwnerId } from '../auth/current-owner.decorator.js';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard.js';
-// DTO classes are required at runtime by Nest validation metadata.
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports
 import {
   AiConnectionTestResponseDto,
   AiProviderProfileResponseDto,
@@ -63,6 +62,7 @@ export class AiController {
   }
 
   @Post('providers')
+  @ApiBody({ type: CreateAiProviderProfileDto })
   @ApiCreatedResponse({ type: AiProviderProfileResponseDto })
   async createProvider(
     @CurrentOwnerId() ownerId: string,
@@ -72,6 +72,7 @@ export class AiController {
   }
 
   @Patch('providers/:id')
+  @ApiBody({ type: UpdateAiProviderProfileDto })
   @ApiOkResponse({ type: AiProviderProfileResponseDto })
   async updateProvider(
     @CurrentOwnerId() ownerId: string,
@@ -111,6 +112,7 @@ export class AiController {
   }
 
   @Post('posts/:postId/sessions')
+  @ApiBody({ type: CreateAiSessionDto })
   @ApiCreatedResponse({ type: AiSessionResponseDto })
   async createSession(
     @CurrentOwnerId() ownerId: string,
@@ -130,6 +132,7 @@ export class AiController {
   }
 
   @Patch('sessions/:id')
+  @ApiBody({ type: UpdateAiSessionDto })
   @ApiOkResponse({ type: AiSessionResponseDto })
   async renameSession(
     @CurrentOwnerId() ownerId: string,
@@ -151,6 +154,7 @@ export class AiController {
 
   @Post('sessions/:id/runs')
   @ApiOperation({ summary: 'Run the selected AI provider and stream normalized SSE' })
+  @ApiBody({ type: StartAiRunDto })
   @ApiProduces('text/event-stream')
   async startRun(
     @CurrentOwnerId() ownerId: string,
@@ -183,6 +187,7 @@ export class AiController {
   }
 
   @Patch('sessions/:id/tool-decisions/:decisionId')
+  @ApiBody({ type: UpdateToolDecisionDto })
   @ApiOkResponse({ type: AiToolDecisionResponseDto })
   async decideToolCall(
     @CurrentOwnerId() ownerId: string,
@@ -196,6 +201,7 @@ export class AiController {
   }
 
   @Post('sessions/:id/tool-calls')
+  @ApiBody({ type: RecordToolCallDto })
   @ApiCreatedResponse({ type: AiToolDecisionResponseDto })
   async recordToolCall(
     @CurrentOwnerId() ownerId: string,

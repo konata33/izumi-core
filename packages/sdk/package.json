@@ -20,7 +20,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.test.json",
     "generate": "openapi-typescript ../../apps/api/openapi.json -o src/openapi.d.ts",
     "test": "vitest run"
   },

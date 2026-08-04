@@ -226,6 +226,19 @@ export class AiService {
         HttpStatus.BAD_REQUEST,
       );
     }
+    await this.findProviderRecord(ownerId, id);
+    const [session] = await this.database
+      .select({ id: aiSessions.id })
+      .from(aiSessions)
+      .where(and(eq(aiSessions.ownerId, ownerId), eq(aiSessions.providerProfileId, id)))
+      .limit(1);
+    if (session) {
+      throw new ApiException(
+        'AI_PROVIDER_IN_USE',
+        'Delete the sessions using this AI provider before deleting it',
+        HttpStatus.CONFLICT,
+      );
+    }
     const [deleted] = await this.database
       .delete(aiProviderProfiles)
       .where(
@@ -259,11 +272,8 @@ export class AiService {
     input: CreateAiSessionDto,
   ): Promise<AiSessionDto> {
     await this.assertPostOwnership(ownerId, postId);
-    const providerProfileId =
-      input.providerProfileId === 'environment' ? null : input.providerProfileId;
-    if (input.providerProfileId) {
-      await this.resolveProvider(ownerId, input.providerProfileId);
-    }
+    const providerId = await this.selectProviderId(ownerId, input.providerProfileId);
+    await this.resolveProvider(ownerId, providerId);
     const now = new Date();
     const [session] = await this.database
       .insert(aiSessions)
@@ -272,7 +282,7 @@ export class AiService {
         ownerId,
         postId,
         title: input.title?.trim() || '新对话',
-        providerProfileId,
+        providerProfileId: providerId === 'environment' ? null : providerId,
         createdAt: now,
         updatedAt: now,
       })
@@ -333,15 +343,23 @@ export class AiService {
       );
     }
     const existing = await this.findSessionRecord(ownerId, sessionId);
-    const providerId =
-      input.providerProfileId ?? existing.providerProfileId ?? 'environment';
+    const providerId = await this.selectProviderId(
+      ownerId,
+      input.providerProfileId,
+      existing.providerProfileId,
+    );
     const provider = await this.resolveProvider(ownerId, providerId);
     const runId = randomUUID();
     const now = new Date();
     const staleBefore = new Date(now.getTime() - AI_ACTIVE_RUN_STALE_AFTER_MS);
     const [claimed] = await this.database
       .update(aiSessions)
-      .set({ activeRunId: runId, activeRunStartedAt: now, updatedAt: now })
+      .set({
+        providerProfileId: provider.id === 'environment' ? null : provider.id,
+        activeRunId: runId,
+        activeRunStartedAt: now,
+        updatedAt: now,
+      })
       .where(
         and(
           eq(aiSessions.id, sessionId),
@@ -613,6 +631,24 @@ export class AiService {
       apiKey: this.decrypt(record.encryptedApiKey),
       allowPrivateNetwork: false,
     };
+  }
+
+  private async selectProviderId(
+    ownerId: string,
+    requestedId?: string,
+    sessionProviderId?: string | null,
+  ): Promise<string> {
+    if (requestedId !== undefined) return requestedId;
+    if (sessionProviderId) return sessionProviderId;
+    if (this.config.defaultAiProvider) return 'environment';
+    const [provider] = await this.database
+      .select({ id: aiProviderProfiles.id })
+      .from(aiProviderProfiles)
+      .where(eq(aiProviderProfiles.ownerId, ownerId))
+      .orderBy(asc(aiProviderProfiles.name))
+      .limit(1);
+    if (!provider) this.providerNotFound();
+    return provider!.id;
   }
 
   private async assertBaseUrl(

@@ -180,16 +180,10 @@ export function createIzumiClient(options: IzumiClientOptions) {
     getOwnerAuthStatus: async (): Promise<OwnerAuthStatus> =>
       unwrap<OwnerAuthStatus>(await client.GET('/api/v1/auth/status')),
 
-    setupOwner: async (
-      input: OwnerSetupInput,
-      setupToken: string,
-    ): Promise<AuthToken> =>
+    setupOwner: async (input: OwnerSetupInput): Promise<AuthToken> =>
       unwrap<AuthToken>(
         await client.POST('/api/v1/auth/setup', {
           body: input,
-          params: {
-            header: { 'x-izumi-setup-token': setupToken },
-          },
         }),
       ),
 

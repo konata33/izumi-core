@@ -184,10 +184,13 @@ if (
 if (
   !auth.includes('readOnly={!isSetup}') ||
   auth.includes('mx-auth-switch') ||
-  !auth.includes('开始使用') ||
+  !auth.includes('SetupProgress') ||
+  !auth.includes('欢迎使用 Izumi') ||
   !auth.includes('创建账户')
 )
-  fail('auth must retain the direct, status-driven credential flow');
+  fail('auth must retain the routed, status-driven setup and login flow');
+if (!app.includes('path="/setup"') || !app.includes('mode="setup"'))
+  fail('the uninitialized owner flow must retain its dedicated setup route');
 if (
   !auth.includes('AuthBranchCanvas') ||
   !auth.includes('drawBranchCanvas') ||
@@ -222,11 +225,7 @@ for (const phrase of [
 ]) {
   if (!auth.includes(phrase)) fail(`auth is missing its direct feedback “${phrase}”`);
 }
-for (const phrase of [
-  '用户名或密码不正确。',
-  '初始化令牌无效。请重新复制后再试。',
-  '管理员已设置，请登录。',
-]) {
+for (const phrase of ['用户名或密码不正确。', '管理员已设置，请登录。']) {
   if (!errors.includes(phrase)) fail(`auth error mapping is missing “${phrase}”`);
 }
 if (
@@ -353,7 +352,6 @@ if (styles.includes('.mx-auth-field::before'))
 if (
   !auth.includes('placeholder="用户名"') ||
   !auth.includes('placeholder="密码（至少 12 个字符）"') ||
-  !auth.includes('placeholder="初始化令牌"') ||
   !auth.includes('className="sr-only"') ||
   auth.includes('<label htmlFor=')
 )
@@ -361,9 +359,9 @@ if (
 if (
   auth.includes('auth-password-hint') ||
   auth.includes('auth-token-help') ||
-  auth.includes('初始化令牌只用于本次请求。')
+  auth.includes('初始化令牌')
 )
-  fail('auth must not restore redundant static credential helper copy');
+  fail('auth must not restore bootstrap-token fields or helper copy');
 if (
   !styles.includes('border: 1px solid transparent') ||
   !styles.includes('.mx-auth-field:not(.is-readonly):hover .mx-auth-input-frame') ||

@@ -115,7 +115,7 @@ export class AiConnectionTestResponseDto {
 }
 
 export class CreateAiSessionDto {
-  @ApiPropertyOptional({ type: String, default: '新对话' })
+  @ApiPropertyOptional({ type: String, example: '新对话' })
   @IsOptional()
   @IsString()
   @MaxLength(120)

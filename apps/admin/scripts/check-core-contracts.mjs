@@ -357,8 +357,9 @@ for (const contractMarker of [
   "profile.source === 'environment'",
   'ownerVoidRequest',
   'new ServerSentEventParser()',
-  'initiated.uploadFields',
   'new FormData()',
+  "body.append('file', file)",
+  "'/media/uploads'",
   "method: 'POST'",
   "'/posts/references/resolve'",
   '/api/v1/public/posts/',
@@ -404,9 +405,14 @@ assert.equal(
   'publish preview must not expose unresolved reference placeholders',
 );
 assert.equal(
-  coreSource.includes('initiated.requiredHeaders'),
+  [
+    'initiated.requiredHeaders',
+    'initiated.uploadFields',
+    'uploadUrl',
+    '/finalize',
+  ].some((marker) => coreSource.includes(marker)),
   false,
-  'media upload must use the presigned POST policy instead of legacy PUT headers',
+  'media upload must flow through Core without direct-upload or finalize contracts',
 );
 
 const editorSource = await readFile(
