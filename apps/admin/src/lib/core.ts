@@ -12,7 +12,7 @@ import {
   type PublicProfile,
   type ReplaceProfileInput,
   type UpdatePostInput,
-} from '@izumi/sdk';
+} from '@konata33/izumi-sdk';
 import type { SerializedEditorState } from 'lexical';
 
 import {

@@ -7,17 +7,17 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "build": "pnpm --filter @izumi/sdk build && pnpm --filter @izumi/admin build && pnpm --filter @izumi/api build",
+    "build": "pnpm --filter @konata33/izumi-sdk build && pnpm --filter @izumi/admin build && pnpm --filter @izumi/api build",
     "dev": "pnpm --filter @izumi/api dev",
     "dev:admin": "pnpm --filter @izumi/admin dev",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "typecheck": "pnpm --filter @izumi/sdk typecheck && pnpm --filter @izumi/sdk build && pnpm --filter @izumi/api typecheck && pnpm --filter @izumi/admin typecheck",
-    "test": "pnpm --filter @izumi/api test && pnpm --filter @izumi/sdk test",
+    "typecheck": "pnpm --filter @konata33/izumi-sdk typecheck && pnpm --filter @konata33/izumi-sdk build && pnpm --filter @izumi/api typecheck && pnpm --filter @izumi/admin typecheck",
+    "test": "pnpm --filter @izumi/api test && pnpm --filter @konata33/izumi-sdk test",
     "test:integration": "pnpm --filter @izumi/api test:integration",
     "openapi": "pnpm --filter @izumi/api openapi:generate",
-    "sdk:generate": "pnpm openapi && pnpm --filter @izumi/sdk generate"
+    "sdk:generate": "pnpm openapi && pnpm --filter @konata33/izumi-sdk generate"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

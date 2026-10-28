@@ -58,7 +58,7 @@ pnpm typecheck
 
 ## 与 Core 的契约
 
-前端客户端位于 [`src/lib/core.ts`](src/lib/core.ts)，直接使用本地打包的 `@izumi/sdk`，对应现有 Core OpenAPI 契约：
+前端客户端位于 [`src/lib/core.ts`](src/lib/core.ts)，直接使用本地打包的 `@konata33/izumi-sdk`，对应现有 Core OpenAPI 契约：
 
 - `POST /api/v1/auth/setup`：仅在唯一 Owner 尚不存在时创建账户
 - `POST /api/v1/auth/login`

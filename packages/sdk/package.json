@@ -1,5 +1,5 @@
 {
-  "name": "@izumi/sdk",
+  "name": "@konata33/izumi-sdk",
   "version": "0.1.0",
   "description": "Typed client for the Izumi Core HTTP API",
   "type": "module",

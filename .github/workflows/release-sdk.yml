@@ -8,6 +8,10 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # npm trusted publishing exchanges the GitHub OIDC token for a publish credential.
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -15,11 +19,12 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # Trusted publishing needs npm >= 11.5.1, which ships with Node 24.
+          node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
 
-      - run: pnpm install --frozen-lockfile --filter @izumi/sdk...
+      - run: pnpm install --frozen-lockfile --filter @konata33/izumi-sdk...
 
       - name: Check tag matches package version
         working-directory: packages/sdk
@@ -30,9 +35,9 @@ jobs:
             exit 1
           fi
 
-      - run: pnpm --filter @izumi/sdk typecheck
-      - run: pnpm --filter @izumi/sdk test
+      - run: pnpm --filter @konata33/izumi-sdk typecheck
+      - run: pnpm --filter @konata33/izumi-sdk test
 
-      - run: pnpm --filter @izumi/sdk publish --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - run: npm --version
+      - run: npm publish
+        working-directory: packages/sdk

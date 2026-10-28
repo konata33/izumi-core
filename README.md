@@ -2,7 +2,7 @@
 
 Izumi Core is an independent content platform for the Izumi blog. It owns its
 API, identity, content data, and background infrastructure. The public Izumi
-website consumes released versions of `@izumi/sdk` over versioned HTTP APIs;
+website consumes released versions of `@konata33/izumi-sdk` over versioned HTTP APIs;
 the repositories do not share source code, database access, or filesystem
 links.
 
@@ -74,7 +74,7 @@ incomplete legacy records return `404` or are absent from the archive. Both
 success responses use `{ "data": ... }`; errors use the standard
 `{ "error": ... }` envelope.
 
-`@izumi/sdk` exports `createIzumiPublicClient`, whose `baseUrl` has the same
+`@konata33/izumi-sdk` exports `createIzumiPublicClient`, whose `baseUrl` has the same
 API-prefix meaning as `IZUMI_CORE_URL`. The public Izumi site must use it only
 in server-side rendering, metadata, RSS, and sitemap code. `document` is the
 canonical Lexical/Haklex JSON source. `content` is server-derived compatibility
@@ -146,10 +146,22 @@ RUN_INTEGRATION_TESTS=true pnpm test:integration
 
 ## Releasing the SDK
 
-`@izumi/sdk` is published to npm by `.github/workflows/release-sdk.yml` when a
-tag named `sdk-v<version>` is pushed. The tag must match the `version` in
-`packages/sdk/package.json`, and the repository needs an `NPM_TOKEN` secret
-with publish access to the `@izumi` scope.
+`@konata33/izumi-sdk` is published to npm by `.github/workflows/release-sdk.yml`
+when a tag named `sdk-v<version>` is pushed. The tag must match the `version` in
+`packages/sdk/package.json`. Publishing uses npm trusted publishing (GitHub
+OIDC), so no npm token is stored in the repository.
+
+The first version has to be published manually, because a trusted publisher can
+only be configured on a package that already exists:
+
+```bash
+pnpm --filter @konata33/izumi-sdk build
+cd packages/sdk && npm publish --registry https://registry.npmjs.org/
+```
+
+Then, on npmjs.com, open the package settings and add a GitHub Actions trusted
+publisher: user `konata33`, repository `izumi-core`, workflow `release-sdk.yml`.
+Every later release goes through the tag:
 
 ```bash
 pnpm sdk:generate
@@ -160,4 +172,4 @@ git push origin sdk-v0.1.0
 
 While developing the website against unreleased Core changes, link the local
 build instead of waiting for a release: run `pnpm link ../izumi-core/packages/sdk`
-in the website repository after `pnpm --filter @izumi/sdk build`.
+in the website repository after `pnpm --filter @konata33/izumi-sdk build`.
