@@ -36,7 +36,7 @@
     "@haklex/rich-plugin-slash-menu": "0.31.1",
     "@haklex/rich-plugin-table": "0.31.1",
     "@haklex/rich-style-token": "0.31.1",
-    "@izumi/sdk": "workspace:*",
+    "@konata33/izumi-sdk": "workspace:*",
     "@lexical/extension": "0.48.0",
     "@lexical/code-core": "0.48.0",
     "@lexical/link": "0.48.0",

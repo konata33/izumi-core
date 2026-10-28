@@ -1,7 +1,12 @@
 {
-  "name": "@izumi/sdk",
+  "name": "@konata33/izumi-sdk",
   "version": "0.1.0",
   "description": "Typed client for the Izumi Core HTTP API",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/konata33/izumi-core.git",
+    "directory": "packages/sdk"
+  },
   "type": "module",
   "files": [
     "dist"
@@ -18,11 +23,16 @@
   "engines": {
     "node": ">=22.12"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
-    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/openapi.d.ts",
-    "test": "vitest run"
+    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/openapi.ts",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "openapi-fetch": "0.17.0"

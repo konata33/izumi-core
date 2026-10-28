@@ -2,6 +2,6 @@
 node_modules/
 dist/
 apps/api/openapi.json
-packages/sdk/src/openapi.d.ts
+packages/sdk/src/openapi.ts
 pnpm-lock.yaml
 .conductor/settings.toml

@@ -151,5 +151,5 @@ GET endpoints. On-demand cache invalidation can be added after the admin
 publishing flow is stable.
 
 The current front-end adapter lives in `src/lib/posts.ts`. When `izumi-core`
-publishes `@izumi/sdk`, replace only the HTTP calls inside that adapter; keep
+publishes `@konata33/izumi-sdk`, replace only the HTTP calls inside that adapter; keep
 the exported `getPosts`, `getLatestPosts`, and `getPostBySlug` methods stable.

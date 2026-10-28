@@ -1,0 +1,43 @@
+name: Release SDK
+
+on:
+  push:
+    tags:
+      - 'sdk-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    # npm trusted publishing exchanges the GitHub OIDC token for a publish credential.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Trusted publishing needs npm >= 11.5.1, which ships with Node 24.
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile --filter @konata33/izumi-sdk...
+
+      - name: Check tag matches package version
+        working-directory: packages/sdk
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "sdk-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $version"
+            exit 1
+          fi
+
+      - run: pnpm --filter @konata33/izumi-sdk typecheck
+      - run: pnpm --filter @konata33/izumi-sdk test
+
+      - run: npm --version
+      - run: npm publish
+        working-directory: packages/sdk

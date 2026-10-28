@@ -642,7 +642,7 @@ export interface components {
             revision: number;
             hasUnpublishedChanges: boolean;
             /** Format: date-time */
-            publishedAt?: string | null;
+            publishedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
