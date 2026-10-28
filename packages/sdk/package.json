@@ -2,6 +2,11 @@
   "name": "@konata33/izumi-sdk",
   "version": "0.1.0",
   "description": "Typed client for the Izumi Core HTTP API",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/konata33/izumi-core.git",
+    "directory": "packages/sdk"
+  },
   "type": "module",
   "files": [
     "dist"
