@@ -1,0 +1,38 @@
+name: Release SDK
+
+on:
+  push:
+    tags:
+      - 'sdk-v*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile --filter @izumi/sdk...
+
+      - name: Check tag matches package version
+        working-directory: packages/sdk
+        run: |
+          version=$(node -p "require('./package.json').version")
+          if [ "sdk-v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $version"
+            exit 1
+          fi
+
+      - run: pnpm --filter @izumi/sdk typecheck
+      - run: pnpm --filter @izumi/sdk test
+
+      - run: pnpm --filter @izumi/sdk publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

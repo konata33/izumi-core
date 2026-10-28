@@ -9,6 +9,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '.context/**',
       'apps/api/openapi.json',
+      'packages/sdk/src/openapi.ts',
     ],
   },
   eslint.configs.recommended,

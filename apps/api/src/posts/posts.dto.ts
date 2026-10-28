@@ -236,7 +236,7 @@ export class PostDto {
   @ApiProperty({ type: Boolean })
   hasUnpublishedChanges!: boolean;
 
-  @ApiPropertyOptional({ type: String, format: 'date-time', nullable: true })
+  @ApiProperty({ type: String, format: 'date-time', nullable: true })
   publishedAt!: string | null;
 
   @ApiProperty({ type: String, format: 'date-time' })

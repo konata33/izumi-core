@@ -143,3 +143,21 @@ integration test uses PostgreSQL Testcontainers and runs with:
 ```bash
 RUN_INTEGRATION_TESTS=true pnpm test:integration
 ```
+
+## Releasing the SDK
+
+`@izumi/sdk` is published to npm by `.github/workflows/release-sdk.yml` when a
+tag named `sdk-v<version>` is pushed. The tag must match the `version` in
+`packages/sdk/package.json`, and the repository needs an `NPM_TOKEN` secret
+with publish access to the `@izumi` scope.
+
+```bash
+pnpm sdk:generate
+# bump packages/sdk/package.json version, commit, then:
+git tag sdk-v0.1.0
+git push origin sdk-v0.1.0
+```
+
+While developing the website against unreleased Core changes, link the local
+build instead of waiting for a release: run `pnpm link ../izumi-core/packages/sdk`
+in the website repository after `pnpm --filter @izumi/sdk build`.

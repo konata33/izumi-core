@@ -18,11 +18,16 @@
   "engines": {
     "node": ">=22.12"
   },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.test.json",
-    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/openapi.d.ts",
-    "test": "vitest run"
+    "generate": "openapi-typescript ../../apps/api/openapi.json -o src/openapi.ts",
+    "test": "vitest run",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "openapi-fetch": "0.17.0"
